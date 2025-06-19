@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+ai_video_env/
+venv/
+env/
+ENV/
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Output files
+output/
+*.mp4
+*.wav
+*.jpg
+*.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Config with sensitive data
+config.py
+
+# FFmpeg temp files
+temp-audio.m4a
