@@ -51,8 +51,5 @@ Thumbs.db
 # Logs
 *.log
 
-# Config with sensitive data
-config.py
-
 # FFmpeg temp files
 temp-audio.m4a
