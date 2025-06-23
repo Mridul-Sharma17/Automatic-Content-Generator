@@ -31,12 +31,11 @@ temp/
 tmp/
 *.tmp
 
-# Output files
-output/
-*.mp4
-*.wav
-*.jpg
-*.png
+# Temporary media files (not final outputs)
+temp/*.mp4
+temp/*.wav
+temp/*.jpg
+temp/*.png
 
 # IDE
 .vscode/

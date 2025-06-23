@@ -2,12 +2,14 @@
 
 A fully automated, AI-powered video generation system that transforms text scripts into high-engagement YouTube Shorts with realistic voiceover, synchronized subtitles, and semantically-matched visuals. Built for maximum viewer retention and viral potential.
 
-## 🎯 **MAJOR BREAKTHROUGH - V2.0 ACHIEVEMENTS**
+## 🎯 **MAJOR BREAKTHROUGH - V2.5 ACHIEVEMENTS**
 
 ✅ **PERFECT AUDIO-VIDEO SYNC** - Eliminated duration mismatches and missing video at the end  
 ✅ **INTELLIGENT PIXABAY INTEGRATION** - Semantic video search with rich tag metadata (10x better than Pexels)  
-✅ **REAL-TIME SCENE ANALYSIS** - Uses actual audio timing and subtitle segments for precise cuts  
-✅ **ZERO CRASHES** - Robust MoviePy handling with proper clip validation and resource management  
+✅ **BRAND-AWARE PROMPTS** - Full project context integration for dramatically improved video relevance  
+✅ **FINANCIAL EDUCATION FOCUS** - Specialized for wealth-building content with emotional intelligence  
+✅ **ROBUST ERROR HANDLING** - Zero crashes with comprehensive fallback strategies  
+✅ **FUNCTION-BASED ARCHITECTURE** - Streamlined from class-based to efficient function-based video fetching  
 ✅ **FULL PIPELINE AUTOMATION** - End-to-end generation from script to final video  
 
 ## ✨ Core Features
@@ -15,10 +17,12 @@ A fully automated, AI-powered video generation system that transforms text scrip
 - 🧠 **Audio-First Architecture** - Generate audio → subtitles → scene analysis for perfect sync
 - 🎵 **Realistic Voiceover** - High-quality AI voice synthesis with Edge-TTS (multiple voices)
 - 📹 **Semantic Video Matching** - Pixabay integration with intelligent tag-based scoring system
-- 📝 **Professional Subtitles** - Whisper-based transcription with precise timing alignment
+- � **Brand-Aware Intelligence** - Full project context for "Wealthier Everyday" financial education focus
+- �📝 **Professional Subtitles** - Whisper-based transcription with precise timing alignment
 - 🎬 **Smart Video Assembly** - MoviePy-based compilation with duration correction and safety validation
 - 📱 **YouTube Shorts Optimized** - Perfect 9:16 aspect ratio with engagement-focused formatting
 - 🔄 **LangGraph Pipeline** - Modular, fault-tolerant architecture with comprehensive logging
+- 🎯 **Emotional Intelligence** - Visual storytelling that matches content mood and financial concepts
 
 ## 🚀 Quick Start
 
@@ -62,9 +66,9 @@ python langgraph_pipeline.py
    - Get from: https://makersuite.google.com/app/apikey
    - Used for: AI scene analysis and script breakdown
 
-2. **Pexels API** (Free tier: 200 requests/hour)
-   - Get from: https://www.pexels.com/api/
-   - Used for: Stock video footage
+2. **Pixabay API** (Free tier: 5,000 requests/hour)
+   - Get from: https://pixabay.com/api/docs/
+   - Used for: High-quality stock video footage with rich metadata
 
 ### Setup
 
@@ -73,7 +77,7 @@ python langgraph_pipeline.py
 
 ```python
 GEMINI_API_KEY = "your_gemini_api_key_here"
-PEXELS_API_KEY = "your_pexels_api_key_here"
+PIXABAY_API_KEY = "your_pixabay_api_key_here"
 ```
 
 ## 📝 Usage
@@ -83,12 +87,12 @@ PEXELS_API_KEY = "your_pexels_api_key_here"
 1. **Edit your script**: Open `input.txt` and write your video script
 2. **Run the pipeline**: Execute `python langgraph_pipeline.py`
 3. **Wait for processing**: The system will automatically:
-   - Analyze your script with AI
-   - Generate search queries for relevant videos
-   - Download stock footage from Pexels
+   - Analyze your script with AI using full brand context
+   - Generate emotionally-intelligent search queries for relevant videos
+   - Download high-quality stock footage from Pixabay with semantic matching
    - Create AI voiceover with Edge-TTS
    - Generate synchronized subtitles
-   - Assemble the final video
+   - Assemble the final video with perfect sync
 4. **Find your video**: Check the `output/` directory for your generated video
 
 ### Example Script
@@ -117,14 +121,16 @@ The system uses a **LangGraph-based pipeline** with modular nodes:
    - Determines mood, action type, and optimal duration
 
 2. **Prompt Generator Node** (`nodes/prompt_generator_node.py`)
-   - Creates optimized search queries for Pexels API
-   - Generates primary and fallback search strategies
-   - Categorizes content for better video matching
+   - Creates brand-aware, context-rich search queries for Pixabay API
+   - Includes full "Wealthier Everyday" project context and financial education focus
+   - Implements emotional intelligence and visual storytelling strategies
+   - Generates primary and fallback search strategies with semantic scoring
 
 3. **Video Fetcher Node** (`nodes/video_fetcher_node.py`)
-   - Downloads high-quality portrait videos (9:16 aspect ratio)
-   - Implements rate limiting and quality preferences
-   - Prevents duplicates with `used_video_ids` tracking
+   - Function-based Pixabay integration with semantic tag scoring
+   - Downloads high-quality portrait videos (9:16 aspect ratio) 
+   - Implements intelligent video selection based on relevance scoring
+   - Robust error handling and fallback strategies
 
 4. **Voiceover Node** (`nodes/voiceover_node.py`)
    - Generates realistic AI voiceover using Edge-TTS
@@ -185,9 +191,11 @@ Modify video fetcher preferences:
 
 ```python
 # In video_fetcher_node.py
-quality_preferences = ["hd", "sd"]  # Prefer HD, fallback to SD
-orientation = "portrait"            # For YouTube Shorts (9:16)
-duration_min = 10                   # Minimum video duration in seconds
+def search_pixabay_videos(query, api_key, max_results=20):
+    # Quality preferences: HD first, then lower quality
+    # Orientation: vertical for YouTube Shorts (9:16)
+    # Duration: minimum 10 seconds
+    # Category: automatically determined by content analysis
 ```
 
 ### Subtitle Styling
@@ -221,7 +229,7 @@ pip install -r requirements.txt
 - **Windows**: Download from https://ffmpeg.org/
 
 **API rate limits**:
-- Pexels: 200 requests/hour (free tier)
+- Pixabay: 5,000 requests/hour (free tier)
 - Gemini: 60 requests/minute (free tier)
 - Wait or upgrade to higher tiers if needed
 
@@ -255,12 +263,12 @@ python langgraph_pipeline.py --debug
 
 ### Content Ideas
 
-- Financial tips and advice
-- Investment strategies
-- Wealth-building habits
-- Money mistakes to avoid
-- Success stories and case studies
-- Market analysis and trends
+- **Financial Education**: Investment strategies, wealth-building habits, compound interest
+- **Personal Finance**: Budgeting tips, saving strategies, debt elimination
+- **Real Estate**: Property investment, market analysis, rental income strategies  
+- **Business Growth**: Entrepreneurship, passive income, scaling strategies
+- **Market Psychology**: Behavioral finance, decision-making, risk management
+- **Success Stories**: Case studies, millionaire habits, transformation journeys
 
 ## 📊 Performance
 
@@ -323,13 +331,13 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## 🙏 Acknowledgments
 
-- **Google Gemini** for AI-powered scene analysis
+- **Google Gemini** for AI-powered scene analysis and brand intelligence
 - **OpenAI Whisper** for accurate speech recognition
 - **Microsoft Edge-TTS** for high-quality voice synthesis
-- **Pexels** for providing free stock video content
+- **Pixabay** for providing premium stock video content with rich metadata
 - **LangGraph** for pipeline orchestration framework
 - **MoviePy** for video processing capabilities
 
 ---
 
-**Ready to create amazing AI-generated videos? Get started now!** 🚀
+**Ready to create amazing AI-generated financial education videos? Get started now!** 🚀💰
