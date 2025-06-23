@@ -1,535 +1,438 @@
 """
-Video Fetcher Node - Pexels API Integration for Stock Video Download
-Downloads high-quality portrait videos optimized for YouTube Shorts
+Video Fetcher Node - Semantic Video Selection with Pixabay API
+
+This node searches for and selects the most relevant stock videos using Pixabay's API,
+which provides rich semantic metadata (tags, categories) for intelligent video selection.
+Pixabay offers superior content curation compared to Pexels.
 """
 
-import asyncio
-import aiohttp
-import json
-import logging
+import requests
 import os
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass
-from urllib.parse import urlparse
-import hashlib
-import time
+import random
+import logging
+from typing import List, Dict, Optional, Tuple
+from difflib import SequenceMatcher
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@dataclass
-class VideoResult:
-    """Represents a downloaded video with metadata"""
-    scene_id: int
-    video_id: str
-    file_path: str
-    original_url: str
-    duration: Optional[float]
-    width: int
-    height: int
-    file_size: int
-    query_used: str
-    download_time: float
-    source: str = "pexels"
-
-class VideoFetcherNode:
+def calculate_semantic_score(video: Dict, keywords: List[str], prompt: str) -> float:
     """
-    Fetches and downloads stock videos from Pexels API
-    Optimized for vertical YouTube Shorts format (9:16 aspect ratio)
+    Calculate a comprehensive semantic relevance score for a video.
+    Uses Pixabay's tags, popularity metrics, and technical specs.
+    
+    Returns score from 0-100 where 100 is perfect match.
     """
+    score = 0.0
     
-    def __init__(self, api_key: str, download_dir: str = "temp/videos"):
-        """Initialize the Video Fetcher with Pexels API"""
-        self.api_key = api_key
-        self.download_dir = download_dir
-        self.base_url = "https://api.pexels.com/videos"
-        
-        # Create download directory
-        os.makedirs(self.download_dir, exist_ok=True)
-        
-        # Rate limiting (Pexels: 200 requests/hour)
-        self.request_count = 0
-        self.request_window_start = time.time()
-        self.max_requests_per_hour = 180  # Leave some buffer
-        
-        # Video quality preferences (in order of preference)
-        self.quality_preferences = ['hd', 'sd']
-        
-        # Minimum video requirements for YouTube Shorts
-        self.min_width = 720
-        self.min_height = 1280  # 9:16 aspect ratio
-        self.preferred_aspect_ratio = 9/16
-        self.aspect_ratio_tolerance = 0.15
-        
-        # Track used videos to avoid duplicates
-        self.used_video_ids = set()
-        
-        # Fallback search queries for variety
-        self.variety_queries = [
-            'professional business', 'modern office', 'corporate meeting',
-            'financial planning', 'investment success', 'business growth',
-            'professional handshake', 'money concept', 'wealth building',
-            'real estate', 'property investment', 'financial chart'
-        ]
-
-    async def fetch_videos_for_scenes(self, scene_queries: List[Dict]) -> Dict[str, Any]:
-        """
-        Fetch videos for all scenes using their search queries
-        
-        Args:
-            scene_queries: List of scene query dictionaries from PromptGeneratorNode
-            
-        Returns:
-            Dictionary containing download results for each scene
-        """
-        try:
-            logger.info(f"Fetching videos for {len(scene_queries)} scenes...")
-            
-            # Create session with proper headers (no "Bearer " prefix)
-            connector = aiohttp.TCPConnector(limit=10)
-            timeout = aiohttp.ClientTimeout(total=300)  # 5 minutes total timeout
-            
-            async with aiohttp.ClientSession(
-                connector=connector,
-                timeout=timeout,
-                headers={
-                    'Authorization': self.api_key,  # Direct API key, no Bearer prefix
-                    'User-Agent': 'AI-Video-Generator/1.0'
-                }
-            ) as session:
-                
-                download_results = []
-                
-                for i, scene_query in enumerate(scene_queries):
-                    logger.info(f"Processing scene {i+1}/{len(scene_queries)}: {scene_query['scene_id']}")
-                    
-                    # Check rate limits
-                    await self._check_rate_limit()
-                    
-                    # Fetch video for this scene
-                    result = await self._fetch_scene_video(session, scene_query)
-                    
-                    if result['success']:
-                        download_results.append(result)
-                        logger.info(f"✅ Successfully downloaded video for scene {scene_query['scene_id']}")
-                    else:
-                        logger.warning(f"⚠️ Failed to download video for scene {scene_query['scene_id']}: {result['error']}")
-                        download_results.append(result)
-                    
-                    # Small delay to be respectful to the API
-                    await asyncio.sleep(0.5)
-                
-                return {
-                    'success': True,
-                    'total_scenes': len(scene_queries),
-                    'successful_downloads': len([r for r in download_results if r['success']]),
-                    'failed_downloads': len([r for r in download_results if not r['success']]),
-                    'results': download_results
-                }
-                
-        except Exception as e:
-            logger.error(f"Error in video fetching pipeline: {str(e)}")
-            return {
-                'success': False,
-                'error': str(e),
-                'results': []
-            }
-
-    async def _fetch_scene_video(self, session: aiohttp.ClientSession, scene_query: Dict) -> Dict[str, Any]:
-        """Fetch and download a video for a single scene"""
-        try:
-            query_data = scene_query['query_data']
-            scene_id = scene_query['scene_id']
-            
-            # Try primary query first
-            search_result = await self._search_videos(session, query_data.primary_query)
-            
-            if not search_result['success'] or not search_result['videos']:
-                # Try fallback queries
-                for fallback_query in query_data.fallback_queries:
-                    logger.info(f"Trying fallback query: {fallback_query}")
-                    search_result = await self._search_videos(session, fallback_query)
-                    if search_result['success'] and search_result['videos']:
-                        break
-            
-            # If still no results, try variety queries for uniqueness
-            if not search_result['success'] or not search_result['videos']:
-                for variety_query in self.variety_queries:
-                    logger.info(f"Trying variety query: {variety_query}")
-                    search_result = await self._search_videos(session, variety_query)
-                    if search_result['success'] and search_result['videos']:
-                        break
-            
-            if not search_result['success'] or not search_result['videos']:
-                return {
-                    'success': False,
-                    'scene_id': scene_id,
-                    'error': 'No suitable videos found for any queries'
-                }
-            
-            # Find the best video for YouTube Shorts (avoiding duplicates)
-            best_video = self._select_best_video(search_result['videos'])
-            
-            if not best_video:
-                # If no unique video found, try with increased search results
-                logger.info("No unique video found, expanding search...")
-                search_result = await self._search_videos(session, query_data.primary_query, per_page=20)
-                if search_result['success']:
-                    best_video = self._select_best_video(search_result['videos'])
-            
-            if not best_video:
-                return {
-                    'success': False,
-                    'scene_id': scene_id,
-                    'error': 'No unique videos meet YouTube Shorts requirements'
-                }
-            
-            # Download the video
-            download_result = await self._download_video(session, best_video, scene_id, query_data.primary_query)
-            
-            return download_result
-            
-        except Exception as e:
-            logger.error(f"Error fetching video for scene {scene_query['scene_id']}: {str(e)}")
-            return {
-                'success': False,
-                'scene_id': scene_query['scene_id'],
-                'error': str(e)
-            }
-
-    async def _search_videos(self, session: aiohttp.ClientSession, query: str, per_page: int = 10) -> Dict[str, Any]:
-        """Search for videos using Pexels API"""
-        try:
-            search_url = f"{self.base_url}/search"
-            params = {
-                'query': query,
-                'orientation': 'portrait',  # Essential for YouTube Shorts
-                'size': 'medium',  # Full HD quality
-                'per_page': per_page  # Get multiple options
-            }
-            
-            async with session.get(search_url, params=params) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    logger.info(f"Found {len(data.get('videos', []))} videos for query: {query}")
-                    
-                    return {
-                        'success': True,
-                        'videos': data.get('videos', []),
-                        'total_results': data.get('total_results', 0)
-                    }
-                else:
-                    error_text = await response.text()
-                    logger.error(f"Search failed (status {response.status}): {error_text}")
-                    return {
-                        'success': False,
-                        'error': f"API error: {response.status}"
-                    }
-                    
-        except Exception as e:
-            logger.error(f"Search request failed: {str(e)}")
-            return {
-                'success': False,
-                'error': str(e)
-            }
-
-    def _select_best_video(self, videos: List[Dict]) -> Optional[Dict]:
-        """Select the best video for YouTube Shorts from search results, avoiding duplicates"""
-        suitable_videos = []
-        
-        for video in videos:
-            video_id = video.get('id')
-            
-            # Skip if we've already used this video
-            if video_id in self.used_video_ids:
-                continue
-                
-            # Check if video meets basic requirements
-            width = video.get('width', 0)
-            height = video.get('height', 0)
-            duration = video.get('duration', 0)
-            
-            # Must be portrait and meet minimum dimensions
-            if height > width and width >= self.min_width and height >= self.min_height:
-                # Check aspect ratio (should be close to 9:16)
-                aspect_ratio = width / height if height > 0 else 0
-                if abs(aspect_ratio - self.preferred_aspect_ratio) <= self.aspect_ratio_tolerance:
-                    # Check if it has suitable video files
-                    video_files = video.get('video_files', [])
-                    best_file = self._get_best_video_file(video_files)
-                    
-                    if best_file:
-                        suitable_videos.append({
-                            'video': video,
-                            'file': best_file,
-                            'score': self._calculate_video_score(video, best_file)
-                        })
-        
-        if not suitable_videos:
-            logger.warning("No new videos meet YouTube Shorts requirements")
-            return None
-        
-        # Sort by score (higher is better) and return the best
-        suitable_videos.sort(key=lambda x: x['score'], reverse=True)
-        best = suitable_videos[0]
-        
-        # Mark this video as used
-        self.used_video_ids.add(best['video']['id'])
-        
-        logger.info(f"Selected video: {best['video']['id']} "
-                   f"({best['file']['width']}x{best['file']['height']}, "
-                   f"{best['video']['duration']}s, score: {best['score']:.2f})")
-        
-        return {
-            'video_data': best['video'],
-            'video_file': best['file']
-        }
-
-    def _get_best_video_file(self, video_files: List[Dict]) -> Optional[Dict]:
-        """Select the best video file based on quality preferences"""
-        # Group files by quality
-        quality_groups = {}
-        for vf in video_files:
-            quality = vf.get('quality', 'sd')
-            if quality not in quality_groups:
-                quality_groups[quality] = []
-            quality_groups[quality].append(vf)
-        
-        # Try preferred qualities in order
-        for preferred_quality in self.quality_preferences:
-            if preferred_quality in quality_groups:
-                files = quality_groups[preferred_quality]
-                # Within the same quality, prefer higher resolution
-                files.sort(key=lambda x: (x.get('width', 0) * x.get('height', 0)), reverse=True)
-                return files[0]
-        
-        # Fallback to any available file
-        if video_files:
-            return video_files[0]
-        
-        return None
-
-    def _calculate_video_score(self, video: Dict, video_file: Dict) -> float:
-        """Calculate a score for video quality and suitability"""
-        score = 0.0
-        
-        # Resolution score (prefer higher resolution)
-        width = video_file.get('width', 0)
-        height = video_file.get('height', 0)
-        resolution_score = (width * height) / (1080 * 1920)  # Normalize to ideal YouTube Shorts res
-        score += min(resolution_score, 1.0) * 30
-        
-        # Aspect ratio score (prefer 9:16)
-        if height > 0:
-            aspect_ratio = width / height
-            aspect_diff = abs(aspect_ratio - self.preferred_aspect_ratio)
-            aspect_score = max(0, 1 - (aspect_diff / self.aspect_ratio_tolerance))
-            score += aspect_score * 25
-        
-        # Duration score (prefer moderate lengths for scenes)
-        duration = video.get('duration', 0)
-        if 5 <= duration <= 30:
-            score += 20
-        elif 3 <= duration <= 45:
-            score += 15
-        elif duration > 0:
-            score += 10
-        
-        # Quality preference score
-        quality = video_file.get('quality', 'sd')
-        if quality == 'hd':
-            score += 15
-        elif quality == 'sd':
-            score += 10
-        
-        # File format preference
-        file_type = video_file.get('file_type', '')
-        if 'mp4' in file_type:
-            score += 10
-        
-        return score
-
-    async def _download_video(self, session: aiohttp.ClientSession, best_video: Dict, scene_id: int, query: str) -> Dict[str, Any]:
-        """Download the selected video"""
-        try:
-            video_data = best_video['video_data']
-            video_file = best_video['video_file']
-            
-            video_id = video_data['id']
-            download_url = video_file['link']
-            
-            # Generate filename
-            filename = f"scene_{scene_id}_video_{video_id}.mp4"
-            file_path = os.path.join(self.download_dir, filename)
-            
-            # Download the video
-            start_time = time.time()
-            
-            async with session.get(download_url) as response:
-                if response.status == 200:
-                    with open(file_path, 'wb') as f:
-                        async for chunk in response.content.iter_chunked(8192):
-                            f.write(chunk)
-                    
-                    file_size = os.path.getsize(file_path)
-                    download_time = time.time() - start_time
-                    
-                    # Create result object
-                    result = VideoResult(
-                        scene_id=scene_id,
-                        video_id=str(video_id),
-                        file_path=file_path,
-                        original_url=video_data.get('url', ''),
-                        duration=video_data.get('duration'),
-                        width=video_file.get('width', 0),
-                        height=video_file.get('height', 0),
-                        file_size=file_size,
-                        query_used=query,
-                        download_time=download_time
-                    )
-                    
-                    logger.info(f"Downloaded {file_size} bytes in {download_time:.2f}s")
-                    
-                    return {
-                        'success': True,
-                        'scene_id': scene_id,
-                        'video_result': result,
-                        'video_data': video_data,
-                        'file_info': {
-                            'path': file_path,
-                            'size': file_size,
-                            'duration': video_data.get('duration'),
-                            'dimensions': f"{video_file.get('width')}x{video_file.get('height')}"
-                        }
-                    }
-                else:
-                    error_text = await response.text()
-                    return {
-                        'success': False,
-                        'scene_id': scene_id,
-                        'error': f"Download failed: {response.status} - {error_text}"
-                    }
-                    
-        except Exception as e:
-            logger.error(f"Download error: {str(e)}")
-            return {
-                'success': False,
-                'scene_id': scene_id,
-                'error': str(e)
-            }
-
-    async def _check_rate_limit(self):
-        """Check and enforce rate limiting"""
-        current_time = time.time()
-        
-        # Reset counter if an hour has passed
-        if current_time - self.request_window_start > 3600:
-            self.request_count = 0
-            self.request_window_start = current_time
-        
-        # Check if we're approaching the limit
-        if self.request_count >= self.max_requests_per_hour:
-            wait_time = 3600 - (current_time - self.request_window_start)
-            if wait_time > 0:
-                logger.warning(f"Rate limit reached. Waiting {wait_time:.0f} seconds...")
-                await asyncio.sleep(wait_time)
-                self.request_count = 0
-                self.request_window_start = time.time()
-        
-        self.request_count += 1
-
-    def get_download_summary(self, results: List[Dict]) -> str:
-        """Generate a human-readable summary of download results"""
-        if not results:
-            return "No download results available."
-        
-        successful = [r for r in results if r['success']]
-        failed = [r for r in results if not r['success']]
-        
-        summary_lines = [
-            f"Video Download Summary ({len(results)} scenes):",
-            "-" * 60,
-            f"✅ Successful Downloads: {len(successful)}",
-            f"❌ Failed Downloads: {len(failed)}",
-            ""
-        ]
-        
-        if successful:
-            summary_lines.append("Successful Downloads:")
-            total_size = 0
-            total_duration = 0
-            
-            for result in successful:
-                if result.get('video_result'):
-                    vr = result['video_result']
-                    size_mb = vr.file_size / (1024 * 1024)
-                    total_size += vr.file_size
-                    total_duration += vr.duration or 0
-                    
-                    summary_lines.append(
-                        f"  Scene {vr.scene_id}: {vr.width}x{vr.height}, "
-                        f"{vr.duration}s, {size_mb:.1f}MB ({vr.query_used})"
-                    )
-            
-            total_size_mb = total_size / (1024 * 1024)
-            summary_lines.extend([
-                "",
-                f"📊 Total: {total_size_mb:.1f}MB, {total_duration:.1f}s of video content"
-            ])
-        
-        if failed:
-            summary_lines.extend([
-                "",
-                "Failed Downloads:"
-            ])
-            for result in failed:
-                summary_lines.append(f"  Scene {result['scene_id']}: {result.get('error', 'Unknown error')}")
-        
-        return "\n".join(summary_lines)
-
-# Example usage and testing
-async def test_video_fetcher():
-    """Test the Video Fetcher Node"""
-    from config import PEXELS_API_KEY
+    # Extract video metadata
+    tags = video.get('tags', '').lower().split(', ') if video.get('tags') else []
+    page_url = video.get('pageURL', '').lower()
+    video_type = video.get('type', '').lower()
+    duration = video.get('duration', 0)
+    views = video.get('views', 0)
+    downloads = video.get('downloads', 0) 
+    likes = video.get('likes', 0)
     
-    # Initialize fetcher
-    fetcher = VideoFetcherNode(PEXELS_API_KEY)
+    logger.info(f"Scoring video {video.get('id')}: tags={tags}, type={video_type}, duration={duration}s")
     
-    # Create test scene queries (simulating output from PromptGeneratorNode)
-    test_scene_queries = [
-        {
-            'scene_id': 1,
-            'scene_description': 'Person looking worried about money',
-            'query_data': type('obj', (object,), {
-                'primary_query': 'business stress',
-                'fallback_queries': ['office work', 'professional', 'business'],
-                'category': 'business'
-            })(),
-            'timing': {'start_time': 0.0, 'end_time': 5.0, 'duration': 5.0}
-        },
-        {
-            'scene_id': 2,
-            'scene_description': 'Investment and money growth concepts',
-            'query_data': type('obj', (object,), {
-                'primary_query': 'investment money',
-                'fallback_queries': ['finance', 'money growth', 'wealth'],
-                'category': 'finance'
-            })(),
-            'timing': {'start_time': 5.0, 'end_time': 10.0, 'duration': 5.0}
-        }
-    ]
+    # 1. TAG MATCHING (40% of score) - Most important for semantic relevance
+    tag_score = 0.0
+    if tags and tags != ['']:
+        keyword_matches = 0
+        for keyword in keywords:
+            keyword = keyword.lower().strip()
+            for tag in tags:
+                tag = tag.strip()
+                if keyword in tag or tag in keyword:
+                    keyword_matches += 1
+                    logger.info(f"Tag match: '{keyword}' <-> '{tag}'")
+                elif SequenceMatcher(None, keyword, tag).ratio() > 0.7:
+                    keyword_matches += 0.5
+                    logger.info(f"Fuzzy tag match: '{keyword}' <-> '{tag}' (ratio: {SequenceMatcher(None, keyword, tag).ratio():.2f})")
+        
+        tag_score = min(keyword_matches / len(keywords) * 100, 40.0)
+        logger.info(f"Tag score: {tag_score:.1f}/40.0 ({keyword_matches} matches)")
     
-    # Test video fetching
-    result = await fetcher.fetch_videos_for_scenes(test_scene_queries)
+    score += tag_score
     
-    if result['success']:
-        print("✅ Video Fetching Successful!")
-        print(fetcher.get_download_summary(result['results']))
-        return result
+    # 2. PROMPT RELEVANCE (25% of score) - Semantic matching against full prompt
+    prompt_score = 0.0
+    prompt_lower = prompt.lower()
+    
+    # Check tags against full prompt
+    for tag in tags:
+        if tag and tag in prompt_lower:
+            prompt_score += 5.0
+    
+    # Check if video type matches prompt context
+    if any(word in prompt_lower for word in ['animation', 'cartoon', 'animated']) and video_type == 'animation':
+        prompt_score += 5.0
+    elif video_type == 'film':
+        prompt_score += 2.0
+        
+    prompt_score = min(prompt_score, 25.0)
+    logger.info(f"Prompt relevance score: {prompt_score:.1f}/25.0")
+    score += prompt_score
+    
+    # 3. POPULARITY & QUALITY (20% of score) - Community validation
+    quality_score = 0.0
+    
+    # Normalize metrics (use log scale for very high numbers)
+    import math
+    view_score = min(math.log10(max(views, 1)) * 2.0, 10.0)
+    download_score = min(math.log10(max(downloads, 1)) * 3.0, 8.0) 
+    like_score = min(math.log10(max(likes, 1)) * 4.0, 2.0)
+    
+    quality_score = view_score + download_score + like_score
+    logger.info(f"Quality score: {quality_score:.1f}/20.0 (views: {views}, downloads: {downloads}, likes: {likes})")
+    score += quality_score
+    
+    # 4. TECHNICAL SPECS (15% of score) - Duration and format suitability
+    tech_score = 0.0
+    
+    # Duration scoring - prefer 5-30 second clips for YouTube Shorts
+    if 5 <= duration <= 30:
+        tech_score += 10.0
+    elif 3 <= duration <= 60:
+        tech_score += 7.0
+    elif duration < 3:
+        tech_score += 2.0  # Too short
     else:
-        print(f"❌ Video Fetching Failed: {result['error']}")
+        tech_score += 4.0  # Too long but usable
+        
+    # Video format preference (film > animation for most content)
+    if video_type == 'film':
+        tech_score += 5.0
+    elif video_type == 'animation':
+        tech_score += 3.0
+        
+    logger.info(f"Technical score: {tech_score:.1f}/15.0 (duration: {duration}s, type: {video_type})")
+    score += tech_score
+    
+    # FINAL SCORE CALCULATION
+    final_score = min(score, 100.0)
+    logger.info(f"Final score for video {video.get('id')}: {final_score:.1f}/100.0")
+    
+    return final_score
+
+
+def search_pixabay_videos(keywords: List[str], prompt: str, limit: int = 20) -> List[Dict]:
+    """
+    Search Pixabay for videos using multiple strategies and semantic keywords.
+    
+    Args:
+        keywords: List of search keywords/phrases
+        prompt: Original prompt for context
+        limit: Maximum number of videos to return
+    
+    Returns:
+        List of video objects with metadata
+    """
+    try:
+        from config import PIXABAY_API_KEY
+        
+        if not PIXABAY_API_KEY or PIXABAY_API_KEY == "your_pixabay_api_key_here":
+            logger.error("Pixabay API key not configured")
+            return []
+            
+        all_videos = []
+        seen_ids = set()
+        
+        # Try different search strategies
+        search_queries = []
+        
+        # 1. Individual keywords
+        for keyword in keywords[:3]:  # Top 3 keywords
+            search_queries.append(keyword.strip())
+            
+        # 2. Keyword combinations
+        if len(keywords) >= 2:
+            search_queries.append(f"{keywords[0]} {keywords[1]}")
+            
+        # 3. Extract category-relevant terms from prompt
+        categories = ['nature', 'business', 'technology', 'people', 'education', 
+                     'health', 'travel', 'food', 'sports', 'music', 'science']
+        for category in categories:
+            if category in prompt.lower():
+                search_queries.append(category)
+                break
+        
+        logger.info(f"Pixabay search queries: {search_queries}")
+        
+        for query in search_queries:
+            try:
+                # Pixabay Video API parameters
+                params = {
+                    'key': PIXABAY_API_KEY,
+                    'q': query,
+                    'video_type': 'all',  # all, film, animation
+                    'min_duration': 3,
+                    'safesearch': 'true',
+                    'order': 'popular',  # popular, latest
+                    'per_page': min(20, 200),  # API max is 200
+                    'page': 1
+                }
+                
+                logger.info(f"Searching Pixabay for: '{query}'")
+                response = requests.get(
+                    'https://pixabay.com/api/videos/',
+                    params=params,
+                    timeout=10
+                )
+                response.raise_for_status()
+                
+                data = response.json()
+                videos = data.get('hits', [])
+                
+                logger.info(f"Pixabay returned {len(videos)} videos for '{query}'")
+                
+                for video in videos:
+                    video_id = video.get('id')
+                    if video_id not in seen_ids:
+                        seen_ids.add(video_id)
+                        all_videos.append(video)
+                        
+                        # Log video details for debugging
+                        tags = video.get('tags', 'No tags')
+                        duration = video.get('duration', 0)
+                        logger.info(f"Found video {video_id}: tags='{tags}', duration={duration}s")
+                
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error searching Pixabay for '{query}': {e}")
+                continue
+            except Exception as e:
+                logger.error(f"Unexpected error searching Pixabay for '{query}': {e}")
+                continue
+        
+        logger.info(f"Total unique videos found: {len(all_videos)}")
+        return all_videos[:limit]
+        
+    except Exception as e:
+        logger.error(f"Failed to search Pixabay videos: {e}")
+        return []
+
+
+def select_best_videos(videos: List[Dict], keywords: List[str], prompt: str, count: int = 5) -> List[Dict]:
+    """
+    Select the best videos from search results using semantic scoring.
+    
+    Args:
+        videos: List of video objects from Pixabay
+        keywords: Search keywords for relevance scoring
+        prompt: Original prompt for context
+        count: Number of videos to select
+    
+    Returns:
+        List of best videos sorted by relevance score
+    """
+    if not videos:
+        logger.warning("No videos to select from")
+        return []
+    
+    logger.info(f"Scoring {len(videos)} videos for selection...")
+    
+    # Score all videos
+    scored_videos = []
+    for video in videos:
+        try:
+            score = calculate_semantic_score(video, keywords, prompt)
+            scored_videos.append((score, video))
+        except Exception as e:
+            logger.error(f"Error scoring video {video.get('id', 'unknown')}: {e}")
+            continue
+    
+    # Sort by score (highest first)
+    scored_videos.sort(key=lambda x: x[0], reverse=True)
+    
+    # Log top results
+    logger.info("Top scored videos:")
+    for i, (score, video) in enumerate(scored_videos[:min(10, len(scored_videos))]):
+        video_id = video.get('id', 'unknown')
+        tags = video.get('tags', 'No tags')
+        duration = video.get('duration', 0)
+        logger.info(f"  #{i+1}: Video {video_id} - Score: {score:.1f} - Tags: '{tags}' - Duration: {duration}s")
+    
+    # Return top videos
+    selected = [video for score, video in scored_videos[:count]]
+    logger.info(f"Selected {len(selected)} videos with scores: {[score for score, _ in scored_videos[:count]]}")
+    
+    return selected
+
+
+def get_video_download_url(video: Dict, preferred_quality: str = 'medium') -> Optional[str]:
+    """
+    Extract the best download URL from Pixabay video object.
+    
+    Args:
+        video: Pixabay video object
+        preferred_quality: 'large', 'medium', 'small', 'tiny'
+    
+    Returns:
+        Video download URL or None
+    """
+    try:
+        videos_data = video.get('videos', {})
+        
+        # Quality preference order
+        quality_order = [preferred_quality, 'medium', 'small', 'large', 'tiny']
+        
+        for quality in quality_order:
+            if quality in videos_data:
+                video_info = videos_data[quality]
+                url = video_info.get('url')
+                if url:
+                    width = video_info.get('width', 0)
+                    height = video_info.get('height', 0)
+                    size = video_info.get('size', 0)
+                    
+                    logger.info(f"Selected {quality} quality: {width}x{height}, {size/1024/1024:.1f}MB")
+                    return url
+        
+        logger.warning(f"No suitable video quality found for video {video.get('id')}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error extracting video URL: {e}")
         return None
 
-if __name__ == "__main__":
-    asyncio.run(test_video_fetcher())
+
+def download_video(url: str, filename: str, max_retries: int = 3) -> bool:
+    """
+    Download video from URL with retry logic.
+    
+    Args:
+        url: Video download URL
+        filename: Local filename to save to
+        max_retries: Maximum number of download attempts
+    
+    Returns:
+        True if download successful, False otherwise
+    """
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Downloading video (attempt {attempt + 1}): {filename}")
+            
+            response = requests.get(url, stream=True, timeout=30)
+            response.raise_for_status()
+            
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            
+            with open(filename, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            
+            # Verify file was created and has content
+            if os.path.exists(filename) and os.path.getsize(filename) > 0:
+                logger.info(f"Successfully downloaded: {filename} ({os.path.getsize(filename)/1024/1024:.1f}MB)")
+                return True
+            else:
+                logger.error(f"Downloaded file is empty or missing: {filename}")
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Download attempt {attempt + 1} failed: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error during download attempt {attempt + 1}: {e}")
+    
+    logger.error(f"Failed to download video after {max_retries} attempts")
+    return False
+
+
+def video_fetcher_node(state: Dict) -> Dict:
+    """
+    Main video fetcher node - searches and downloads relevant videos using Pixabay API.
+    
+    Args:
+        state: Pipeline state containing scenes and keywords
+    
+    Returns:
+        Updated state with video_paths
+    """
+    logger.info("=== VIDEO FETCHER NODE (Pixabay API) ===")
+    
+    try:
+        scenes = state.get('scenes', [])
+        if not scenes:
+            logger.error("No scenes found in state")
+            return state
+        
+        video_paths = []
+        temp_dir = "temp/videos"
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        for i, scene in enumerate(scenes):
+            logger.info(f"\n--- Processing Scene {i+1}/{len(scenes)} ---")
+            
+            # Extract keywords and prompt from scene
+            keywords = scene.get('keywords', [])
+            prompt = scene.get('prompt', '')
+            
+            if not keywords and not prompt:
+                logger.warning(f"Scene {i+1} has no keywords or prompt, skipping")
+                video_paths.append(None)
+                continue
+            
+            logger.info(f"Scene {i+1} keywords: {keywords}")
+            logger.info(f"Scene {i+1} prompt: {prompt}")
+            
+            # Search for videos
+            videos = search_pixabay_videos(keywords, prompt, limit=30)
+            
+            if not videos:
+                logger.warning(f"No videos found for scene {i+1}")
+                video_paths.append(None)
+                continue
+            
+            # Select best video
+            best_videos = select_best_videos(videos, keywords, prompt, count=1)
+            
+            if not best_videos:
+                logger.warning(f"No suitable videos selected for scene {i+1}")
+                video_paths.append(None)
+                continue
+            
+            selected_video = best_videos[0]
+            video_id = selected_video.get('id')
+            
+            # Get download URL
+            download_url = get_video_download_url(selected_video, preferred_quality='medium')
+            
+            if not download_url:
+                logger.error(f"No download URL found for video {video_id}")
+                video_paths.append(None)
+                continue
+            
+            # Download video
+            video_filename = os.path.join(temp_dir, f"scene_{i+1}_video_{video_id}.mp4")
+            
+            if download_video(download_url, video_filename):
+                video_paths.append(video_filename)
+                logger.info(f"✓ Scene {i+1} video ready: {video_filename}")
+                
+                # Log attribution info for compliance
+                video_tags = selected_video.get('tags', 'No tags')
+                video_user = selected_video.get('user', 'Unknown')
+                page_url = selected_video.get('pageURL', '')
+                logger.info(f"Video attribution: '{video_tags}' by {video_user} from Pixabay ({page_url})")
+            else:
+                logger.error(f"Failed to download video for scene {i+1}")
+                video_paths.append(None)
+        
+        # Update state
+        state['video_paths'] = video_paths
+        
+        successful_downloads = sum(1 for path in video_paths if path is not None)
+        logger.info(f"\n=== VIDEO FETCHER COMPLETE ===")
+        logger.info(f"Successfully downloaded {successful_downloads}/{len(scenes)} videos")
+        logger.info(f"Video paths: {video_paths}")
+        
+        return state
+        
+    except Exception as e:
+        logger.error(f"Video fetcher node failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return state

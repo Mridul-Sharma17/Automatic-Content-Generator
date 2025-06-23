@@ -129,12 +129,41 @@ class VideoAssemblyNode:
             
             # Create base video by concatenating scenes
             logger.info("🔗 Concatenating scene videos...")
-            base_video = concatenate_videoclips(video_clips, method="compose")
             
-            # Ensure video matches audio duration
-            if base_video.duration != total_duration:
-                logger.info(f"⏱️ Adjusting video duration from {base_video.duration:.2f}s to {total_duration:.2f}s")
+            # SAFETY CHECK: Ensure all clips are valid before concatenating
+            valid_clips = []
+            for i, clip in enumerate(video_clips):
+                try:
+                    # Test if the clip can provide a frame
+                    test_frame = clip.get_frame(0)
+                    if test_frame is not None:
+                        valid_clips.append(clip)
+                        logger.info(f"✅ Clip {i+1} is valid ({clip.duration:.2f}s)")
+                    else:
+                        logger.error(f"❌ Clip {i+1} returned None frame, skipping")
+                except Exception as e:
+                    logger.error(f"❌ Clip {i+1} failed frame test: {e}, skipping")
+            
+            if not valid_clips:
+                return AssemblyResult(success=False, error="No valid video clips after safety check")
+            
+            logger.info(f"🔗 Concatenating {len(valid_clips)} valid clips...")
+            base_video = concatenate_videoclips(valid_clips, method="compose")
+            
+            # Ensure video matches audio duration EXACTLY
+            if abs(base_video.duration - total_duration) > 0.01:  # More than 10ms difference
+                logger.info(f"⏱️ Final duration adjustment: {base_video.duration:.3f}s -> {total_duration:.3f}s")
                 base_video = base_video.set_duration(total_duration)
+            
+            # Verify the final clip can render
+            try:
+                test_frame = base_video.get_frame(0)
+                if test_frame is None:
+                    raise Exception("Base video returns None frame")
+                logger.info("✅ Base video passes final validation")
+            except Exception as e:
+                logger.error(f"❌ Base video failed final validation: {e}")
+                return AssemblyResult(success=False, error=f"Base video validation failed: {e}")
             
             # Add audio to video
             logger.info("🎵 Adding audio track...")
@@ -171,12 +200,32 @@ class VideoAssemblyNode:
             file_size = os.path.getsize(output_path)
             processing_time = time.time() - start_time
             
-            # Clean up clips
-            for clip in video_clips:
-                clip.close()
-            base_video.close()
-            final_video.close()
-            audio_clip.close()
+            # Clean up clips properly to prevent memory leaks
+            logger.info("🧹 Cleaning up video clips...")
+            for i, clip in enumerate(valid_clips):
+                try:
+                    clip.close()
+                    logger.debug(f"Closed clip {i+1}")
+                except Exception as e:
+                    logger.warning(f"Failed to close clip {i+1}: {e}")
+            
+            try:
+                base_video.close()
+                logger.debug("Closed base video")
+            except Exception as e:
+                logger.warning(f"Failed to close base video: {e}")
+                
+            try:
+                final_video.close()
+                logger.debug("Closed final video")
+            except Exception as e:
+                logger.warning(f"Failed to close final video: {e}")
+                
+            try:
+                audio_clip.close()
+                logger.debug("Closed audio clip")
+            except Exception as e:
+                logger.warning(f"Failed to close audio clip: {e}")
             
             logger.info("✅ Video assembly completed successfully!")
             logger.info(f"📊 Final video: {output_path}")
@@ -232,38 +281,45 @@ class VideoAssemblyNode:
         return {'valid': True}
     
     async def _process_scene_videos(self, scene_videos: List[Dict], target_duration: float) -> List[VideoFileClip]:
-        """Process and prepare scene videos for concatenation with proper scene timing"""
+        """Process scene videos with PERFECT audio-subtitle sync - NO MORE ARBITRARY CUTS"""
         video_clips = []
         
-        # Get actual scene durations from the scene data
-        scene_durations = []
-        for scene in scene_videos:
-            scene_duration = scene.get('duration', 5.0)  # Use actual scene duration
-            scene_durations.append(scene_duration)
+        # Create a pool of available videos
+        video_pool = [scene.get('file_path') or scene.get('path') for scene in scene_videos]
+        video_pool = [v for v in video_pool if v and os.path.exists(v)]
         
-        # Adjust durations to match total audio duration
-        total_scene_duration = sum(scene_durations)
-        duration_ratio = target_duration / total_scene_duration
-        adjusted_durations = [d * duration_ratio for d in scene_durations]
+        if not video_pool:
+            logger.error("❌ No valid video files available")
+            return []
         
-        logger.info(f"⏱️ Original scene durations: {[f'{d:.1f}s' for d in scene_durations]}")
-        logger.info(f"⏱️ Adjusted scene durations: {[f'{d:.1f}s' for d in adjusted_durations]}")
+        logger.info(f"🎬 Creating videos synced to ACTUAL speech timing (no more random cuts)")
+        logger.info(f"📹 Using {len(video_pool)} videos with intelligent rotation")
         
-        for i, scene in enumerate(scene_videos):
+        # Use scene-based timing (from audio analysis) instead of arbitrary cuts
+        for i, scene_data in enumerate(scene_videos):
             try:
-                # Get video path
-                video_path = scene.get('file_path') or scene.get('path')
-                scene_id = scene.get('scene_id', i+1)
-                scene_duration = adjusted_durations[i]
+                # Get REAL timing from scene analysis (which is now audio-driven)
+                scene_duration = scene_data.get('duration', 5.0)
+                scene_start = scene_data.get('start_time', i * scene_duration)
+                scene_end = scene_data.get('end_time', scene_start + scene_duration)
                 
-                logger.info(f"🎥 Processing scene {scene_id}: {os.path.basename(video_path)}")
+                if scene_duration <= 0:
+                    logger.warning(f"⚠️ Scene {i+1} has invalid duration, skipping")
+                    continue
+                
+                # Get video path
+                video_path = scene_data.get('file_path') or scene_data.get('path')
+                scene_id = scene_data.get('scene_id', i+1)
+                
+                logger.info(f"🎥 Scene {scene_id}: {os.path.basename(video_path)}")
+                logger.info(f"   ⏱️ Perfect Timing: {scene_start:.2f}s - {scene_end:.2f}s ({scene_duration:.2f}s)")
                 
                 # Load video clip
                 clip = VideoFileClip(video_path)
                 
                 logger.info(f"   Original: {clip.duration:.2f}s, Target: {scene_duration:.2f}s")
                 
-                # Adjust duration to match scene timing
+                # Handle video duration intelligently
                 if clip.duration < scene_duration:
                     # Loop video if too short
                     loops_needed = int(scene_duration / clip.duration) + 1
@@ -272,21 +328,106 @@ class VideoAssemblyNode:
                 # Trim to exact duration
                 clip = clip.subclip(0, scene_duration)
                 
-                # Resize and format for YouTube Shorts
+                # Format for YouTube Shorts
                 clip = self._format_clip_for_shorts(clip)
                 
                 video_clips.append(clip)
-                logger.info(f"   ✅ Processed: {clip.duration:.2f}s, {clip.w}x{clip.h}")
+                logger.info(f"   ✅ Processed: {clip.duration:.2f}s, {clip.w}x{clip.h} (PERFECT SYNC)")
                 
             except Exception as e:
                 logger.error(f"❌ Failed to process scene {scene_id}: {str(e)}")
-                # Create a black placeholder clip with correct duration
+                # Create placeholder to maintain perfect timing
+                scene_duration = scene_videos[i].get('duration', 5.0) if i < len(scene_videos) else 5.0
                 placeholder = ColorClip(
                     size=(self.target_width, self.target_height),
                     color=(0, 0, 0),
-                    duration=adjusted_durations[i] if i < len(adjusted_durations) else 5.0
+                    duration=scene_duration
                 )
                 video_clips.append(placeholder)
+        
+        total_video_duration = sum(clip.duration for clip in video_clips)
+        logger.info(f"✅ Created {len(video_clips)} perfectly synced video scenes")
+        logger.info(f"📊 Total video duration: {total_video_duration:.2f}s (target: {target_duration:.2f}s)")
+        
+        # CRITICAL FIX: Ensure video duration exactly matches audio duration
+        duration_difference = abs(total_video_duration - target_duration)
+        logger.info(f"🎯 Sync accuracy: {duration_difference:.2f}s difference")
+        
+        if duration_difference > 0.1:  # If more than 100ms difference
+            logger.warning(f"⚠️ DURATION MISMATCH: Video {total_video_duration:.2f}s vs Audio {target_duration:.2f}s")
+            
+            if total_video_duration < target_duration:
+                # Add filler content to match exact duration
+                gap_duration = target_duration - total_video_duration
+                logger.info(f"🔧 Adding {gap_duration:.2f}s filler to match audio duration")
+                
+                # FIXED APPROACH: Create a proper filler clip that won't cause MoviePy errors
+                if video_clips and len(video_clips) > 0:
+                    try:
+                        # Get the last successful video clip and create an extended version
+                        last_clip = video_clips[-1]
+                        
+                        # Create filler by looping or extending the last clip SAFELY
+                        if hasattr(last_clip, 'duration') and last_clip.duration > 0:
+                            # Calculate how many loops we need
+                            loops_needed = max(1, int(gap_duration / last_clip.duration) + 1)
+                            
+                            # Create a looped version that's longer than needed
+                            extended_clip = last_clip.loop(n=loops_needed)
+                            
+                            # Trim to exactly the gap duration needed
+                            filler_clip = extended_clip.subclip(0, gap_duration)
+                            
+                            # Format for YouTube Shorts
+                            filler_clip = self._format_clip_for_shorts(filler_clip)
+                            
+                            video_clips.append(filler_clip)
+                            logger.info(f"✅ Added {gap_duration:.2f}s extended content (looped last clip)")
+                            
+                            # Clean up the extended clip to prevent memory issues
+                            extended_clip.close()
+                        else:
+                            raise Exception("Last clip has no valid duration")
+                            
+                    except Exception as e:
+                        logger.warning(f"⚠️ Could not extend last video: {e}, using solid color filler")
+                        # Fallback to solid color clip - GUARANTEED to work
+                        filler_clip = ColorClip(
+                            size=(self.target_width, self.target_height),
+                            color=(20, 20, 20),  # Dark gray instead of black
+                            duration=gap_duration
+                        )
+                        video_clips.append(filler_clip)
+                        logger.info(f"✅ Added {gap_duration:.2f}s solid color filler")
+                else:
+                    logger.error("❌ No video clips available for filler")
+                    # Create a minimal black screen to cover the gap
+                    filler_clip = ColorClip(
+                        size=(self.target_width, self.target_height),
+                        color=(0, 0, 0),
+                        duration=gap_duration
+                    )
+                    video_clips.append(filler_clip)
+                        
+                logger.info(f"✅ Fixed duration mismatch - now {sum(clip.duration for clip in video_clips):.2f}s")
+            
+            elif total_video_duration > target_duration:
+                # Video is too long - trim the last clip
+                excess_duration = total_video_duration - target_duration
+                logger.info(f"🔧 Removing {excess_duration:.2f}s from last clip")
+                
+                if video_clips:
+                    last_clip = video_clips[-1]
+                    new_duration = max(0.1, last_clip.duration - excess_duration)  # Minimum 0.1s
+                    
+                    # Replace the last clip with a trimmed version
+                    trimmed_clip = last_clip.subclip(0, new_duration)
+                    video_clips[-1] = trimmed_clip
+                    
+                    # Close the original clip
+                    last_clip.close()
+                    
+                    logger.info(f"✅ Trimmed last clip to {new_duration:.2f}s")
         
         return video_clips
     

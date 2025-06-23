@@ -1,34 +1,15 @@
 #!/usr/bin/env python3
 """
-Complete LangGraph Pipeline for AI-Powere               # Initialize all nodes
-        self.scene_analyzer = SceneAnalyzerNode()
-        self.prompt_generator = PromptGeneratorNode()
-        self.video_fetcher = VideoFetcherNod            # Prepare scene videos with proper duration data from scenes
-            scene_videos = []
-            for i, video_result in enumerate(download_results):
-                if video_result.get("success"):
-                    # Get the corresponding scene data for proper duration
-                    scene_data = state["scenes"][i] if i < len(state["scenes"]) else {}
-                    scene_duration = scene_data.get("duration", 5.0)
-                    scene_start = scene_data.get("start_time", i * scene_duration)
-                    
-                    scene_videos.append({
-                        "scene_id": i + 1,
-                        "file_path": video_result.get("file_info", {}).get("path", ""),
-                        "duration": scene_duration,  # Use actual scene duration
-                        "start_time": scene_start,
-                        "end_time": scene_start + scene_duration
-                    })I_KEY)  # Pass required API key
-        self.voiceover_generator = VoiceoverNode()
-        self.subtitle_generator = ProfessionalSubtitleNode()
-        self.video_assembler = VideoAssemblyNode()ialize all nodes
-        self.scene_analyzer = SceneAnalyzerNode()
-        self.prompt_generator = PromptGeneratorNode()
-        self.video_fetcher = VideoFetcherNode(PEXELS_API_KEY)  # Pass required API key
-        self.voiceover_generator = VoiceoverNode()
-        self.subtitle_generator = ProfessionalSubtitleNode()
-        self.video_assembler = VideoAssemblyNode()ess Video Generation
+Complete LangGraph Pipeline for AI-Powered Video Generation
 Orchestrates the entire workflow from script to YouTube Short
+
+AUDIO-FIRST ARCHITECTURE FOR PERFECT SYNC:
+1. Generate audio FIRST (master timeline)
+2. Generate subtitles with precise timing
+3. Analyze scenes using REAL audio timing
+4. Generate prompts based on audio-timed scenes
+5. Fetch videos to match real audio timing
+6. Assemble with perfect sync
 """
 
 import asyncio
@@ -37,6 +18,7 @@ import sys
 from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, END
 import logging
+from datetime import datetime
 
 # Add the project directory to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -44,15 +26,22 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Import all our working nodes
 from nodes.scene_analyzer_node import SceneAnalyzerNode
 from nodes.prompt_generator_node import PromptGeneratorNode
-from nodes.video_fetcher_node import VideoFetcherNode
+from nodes.video_fetcher_node import search_pixabay_videos, select_best_videos, get_video_download_url, download_video
 from nodes.voiceover_node import VoiceoverNode
 from nodes.professional_subtitle_node import ProfessionalSubtitleNode
 from nodes.video_assembly_node import VideoAssemblyNode
 from config import PEXELS_API_KEY
-from config import PEXELS_API_KEY
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure extensive logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
+    handlers=[
+        logging.FileHandler(f'pipeline_debug_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
 class VideoGenerationState(TypedDict):
@@ -97,7 +86,7 @@ class AIVideoGenerator:
         # Initialize all nodes
         self.scene_analyzer = SceneAnalyzerNode()
         self.prompt_generator = PromptGeneratorNode()
-        self.video_fetcher = VideoFetcherNode(PEXELS_API_KEY)
+        # Video fetching now uses function-based approach with Pixabay
         self.voiceover_generator = VoiceoverNode()
         self.subtitle_generator = ProfessionalSubtitleNode()
         self.video_assembler = VideoAssemblyNode()
@@ -119,13 +108,13 @@ class AIVideoGenerator:
         workflow.add_node("generate_subtitles", self._generate_subtitles_wrapper)
         workflow.add_node("assemble_video", self._assemble_video_wrapper)
         
-        # Define the workflow edges (sequential pipeline)
-        workflow.set_entry_point("analyze_scenes")
+        # Define the workflow edges (AUDIO-FIRST pipeline for perfect sync)
+        workflow.set_entry_point("generate_voiceover")
+        workflow.add_edge("generate_voiceover", "generate_subtitles")
+        workflow.add_edge("generate_subtitles", "analyze_scenes")
         workflow.add_edge("analyze_scenes", "generate_prompts")
         workflow.add_edge("generate_prompts", "fetch_videos")
-        workflow.add_edge("fetch_videos", "generate_voiceover")
-        workflow.add_edge("generate_voiceover", "generate_subtitles")
-        workflow.add_edge("generate_subtitles", "assemble_video")
+        workflow.add_edge("fetch_videos", "assemble_video")
         workflow.add_edge("assemble_video", END)
         
         return workflow.compile()
@@ -139,17 +128,23 @@ class AIVideoGenerator:
         return state
     
     async def _analyze_scenes_wrapper(self, state: VideoGenerationState) -> VideoGenerationState:
-        """Wrapper for scene analysis node"""
+        """Wrapper for scene analysis node - NOW USES AUDIO TIMING"""
         try:
-            state = self._update_progress(state, "Analyzing scenes with AI...")
+            state = self._update_progress(state, "Analyzing scenes with REAL audio timing...")
             
-            logger.info("🎬 Starting scene analysis...")
-            scenes = await self.scene_analyzer.analyze_scenes(state["script"])
+            logger.info("🎬 Starting audio-driven scene analysis...")
+            
+            # Use the NEW audio-aware method
+            scenes = await self.scene_analyzer.analyze_scenes_with_audio_timing(
+                state["script"], 
+                state["audio_duration"], 
+                state["subtitle_segments"]
+            )
             state["scenes"] = scenes
             
-            logger.info(f"✅ Scene analysis complete! Generated {len(scenes)} scenes")
+            logger.info(f"✅ Audio-synced scene analysis complete! Generated {len(scenes)} scenes")
             for i, scene in enumerate(scenes, 1):
-                logger.info(f"  Scene {i}: {scene.get('description', 'No description')[:50]}...")
+                logger.info(f"  Scene {i}: {scene['timing']['start']:.1f}s-{scene['timing']['end']:.1f}s \"{scene.get('text', '')[:40]}...\"")
                 
         except Exception as e:
             error_msg = f"Scene analysis failed: {str(e)}"
@@ -179,37 +174,104 @@ class AIVideoGenerator:
         return state
     
     async def _fetch_videos_wrapper(self, state: VideoGenerationState) -> VideoGenerationState:
-        """Wrapper for video fetching node"""
+        """Wrapper for video fetching using new Pixabay semantic search"""
         try:
-            state = self._update_progress(state, "Downloading videos from Pexels...")
+            state = self._update_progress(state, "Downloading videos from Pixabay...")
             
-            logger.info("📥 Downloading videos from Pexels API...")
+            logger.info("📥 Downloading videos using Pixabay semantic search...")
             
-            # Create the scene queries format expected by VideoFetcherNode
-            scene_queries = []
-            for i, (scene, query_data) in enumerate(zip(state["scenes"], state["search_queries"])):
-                scene_query = {
-                    'scene_id': i + 1,
-                    'scene_description': scene.get('description', ''),
-                    'query_data': type('obj', (object,), {
-                        'primary_query': query_data.get('primary_query', ''),
-                        'fallback_queries': query_data.get('fallback_queries', []),
-                        'category': query_data.get('category', 'business')
-                    })(),
-                    'timing': {
-                        'start_time': scene.get('timing', {}).get('start', 0),
-                        'end_time': scene.get('timing', {}).get('end', 5),
-                        'duration': scene.get('duration', 5)
-                    }
-                }
-                scene_queries.append(scene_query)
+            scenes = state.get("scenes", [])
+            search_queries = state.get("search_queries", [])
             
-            # Use the correct method name
-            fetch_result = await self.video_fetcher.fetch_videos_for_scenes(scene_queries)
-            state["downloaded_videos"] = fetch_result.get("results", [])
+            if not scenes or not search_queries:
+                logger.error("Missing scenes or search queries for video fetching")
+                state["errors"].append("Missing scenes or search queries")
+                return state
             
-            successful_downloads = [v for v in state["downloaded_videos"] if v.get("success", False)]
-            logger.info(f"✅ Video download complete! Downloaded {len(successful_downloads)}/{len(state['downloaded_videos'])} videos")
+            downloaded_videos = []
+            temp_dir = "temp/videos"
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            for i, (scene, query_data) in enumerate(zip(scenes, search_queries)):
+                logger.info(f"\n--- Fetching video for Scene {i+1}/{len(scenes)} ---")
+                
+                # Extract keywords and prompt
+                keywords = []
+                primary_query = query_data.get('primary_query', '')
+                fallback_queries = query_data.get('fallback_queries', [])
+                
+                if primary_query:
+                    keywords.append(primary_query)
+                keywords.extend(fallback_queries[:2])  # Add top 2 fallback queries
+                
+                # Use scene description as prompt context
+                prompt = scene.get('description', primary_query)
+                
+                if not keywords:
+                    logger.warning(f"No keywords for scene {i+1}, skipping")
+                    downloaded_videos.append({"success": False, "error": "No keywords"})
+                    continue
+                
+                logger.info(f"Scene {i+1} keywords: {keywords}")
+                logger.info(f"Scene {i+1} prompt: {prompt}")
+                
+                try:
+                    # Search for videos
+                    videos = search_pixabay_videos(keywords, prompt, limit=30)
+                    
+                    if not videos:
+                        logger.warning(f"No videos found for scene {i+1}")
+                        downloaded_videos.append({"success": False, "error": "No videos found"})
+                        continue
+                    
+                    # Select best video
+                    best_videos = select_best_videos(videos, keywords, prompt, count=1)
+                    
+                    if not best_videos:
+                        logger.warning(f"No suitable videos selected for scene {i+1}")
+                        downloaded_videos.append({"success": False, "error": "No suitable videos"})
+                        continue
+                    
+                    selected_video = best_videos[0]
+                    video_id = selected_video.get('id')
+                    
+                    # Get download URL
+                    download_url = get_video_download_url(selected_video, preferred_quality='medium')
+                    
+                    if not download_url:
+                        logger.error(f"No download URL found for video {video_id}")
+                        downloaded_videos.append({"success": False, "error": "No download URL"})
+                        continue
+                    
+                    # Download video
+                    video_filename = os.path.join(temp_dir, f"scene_{i+1}_video_{video_id}.mp4")
+                    
+                    if download_video(download_url, video_filename):
+                        downloaded_videos.append({
+                            "success": True,
+                            "scene_id": i + 1,
+                            "video_id": video_id,
+                            "file_info": {"path": video_filename},
+                            "metadata": {
+                                "tags": selected_video.get('tags', ''),
+                                "duration": selected_video.get('duration', 0),
+                                "views": selected_video.get('views', 0),
+                                "downloads": selected_video.get('downloads', 0)
+                            }
+                        })
+                        logger.info(f"✓ Scene {i+1} video ready: {video_filename}")
+                    else:
+                        logger.error(f"Failed to download video for scene {i+1}")
+                        downloaded_videos.append({"success": False, "error": "Download failed"})
+                        
+                except Exception as scene_error:
+                    logger.error(f"Error processing scene {i+1}: {scene_error}")
+                    downloaded_videos.append({"success": False, "error": str(scene_error)})
+            
+            state["downloaded_videos"] = downloaded_videos
+            
+            successful_downloads = [v for v in downloaded_videos if v.get("success", False)]
+            logger.info(f"✅ Video download complete! Downloaded {len(successful_downloads)}/{len(scenes)} videos")
             
         except Exception as e:
             error_msg = f"Video fetching failed: {str(e)}"

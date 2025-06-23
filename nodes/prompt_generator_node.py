@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """
-Prompt Generator Node - Creates optimized search queries for Pexels API
+Prompt Generator Nod            mood = scene.get('mood', 'professional')
+            action_type = scene.get('action_type', 'visualization')
+            description = scene.get('description', '')
+            
+            # Store scene text for visual metaphor generation
+            self._current_scene_text = scene.get('text', '')
+            
+            # Generate primary query with visual metaphors
+            primary_query = self._create_primary_query(keywords, mood, action_type)eates optimized search queries for Pexels API
 Generates primary and fallback search strategies for video fetching
 """
 
@@ -78,32 +86,43 @@ class PromptGeneratorNode:
         return search_queries
     
     def _create_primary_query(self, keywords: List[str], mood: str, action_type: str) -> str:
-        """Create the primary search query"""
+        """Create powerful visual metaphor queries instead of generic keywords"""
         
-        # Start with the most specific keyword
-        primary_keyword = keywords[0] if keywords else 'business'
+        # Extract the scene's core concept
+        scene_text = getattr(self, '_current_scene_text', '').lower()
         
-        # Add mood-based modifiers
-        mood_modifiers = {
-            'energetic': ['dynamic', 'active', 'vibrant'],
-            'serious': ['professional', 'corporate', 'formal'],
-            'motivational': ['inspiring', 'uplifting', 'positive'],
-            'modern': ['contemporary', 'sleek', 'innovative']
-        }
-        
-        modifier = mood_modifiers.get(mood, ['professional'])[0]
-        
-        # Create optimized query
-        if action_type == 'talking_head':
-            query = f"{modifier} {primary_keyword} person speaking"
-        elif action_type == 'demonstration':
-            query = f"{primary_keyword} demonstration tutorial"
-        elif action_type == 'visualization':
-            query = f"{modifier} {primary_keyword} concept visualization"
+        # Create specific visual metaphors based on actual content
+        if 'money sit idle' in scene_text or 'sitting idle' in scene_text:
+            return "static cash pile motionless"
+        elif 'build wealth' in scene_text or 'building wealth' in scene_text:
+            return "construction site building tower"
+        elif 'beat inflation' in scene_text or 'beating inflation' in scene_text:
+            return "arrow defeating downward red graph"
+        elif 'compound' in scene_text or 'compounding' in scene_text:
+            return "snowball rolling growing exponentially"
+        elif 'first step' in scene_text or 'single step' in scene_text:
+            return "shoe taking step path journey"
+        elif 'start investing' in scene_text or 'start today' in scene_text:
+            return "finger pushing green start button"
+        elif 'invest' in scene_text and 'early' in scene_text:
+            return "seedling sprouting from soil"
+        elif 'financial future' in scene_text or 'future' in scene_text:
+            return "horizon bright golden sunrise"
+        elif 'opportunities' in scene_text:
+            return "multiple doorways opening light"
+        elif 'grow' in scene_text and 'time' in scene_text:
+            return "plant timelapse growing fast"
         else:
-            query = f"{modifier} {primary_keyword} professional"
-        
-        return query
+            # Fallback to specific financial visuals (NOT generic business)
+            primary_keyword = keywords[0] if keywords else 'money'
+            if primary_keyword in ['money', 'wealth', 'financial']:
+                return "golden coins stacking up growing pile"
+            elif primary_keyword in ['investment', 'invest', 'investing']:
+                return "graph chart arrow pointing upward success"
+            elif primary_keyword in ['savings', 'save']:
+                return "piggy bank filling up coins dropping"
+            else:
+                return f"{primary_keyword} growth success visualization"
     
     def _create_fallback_queries(self, keywords: List[str], mood: str) -> List[str]:
         """Create fallback search queries"""

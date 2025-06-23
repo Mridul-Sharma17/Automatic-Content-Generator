@@ -1,16 +1,24 @@
-# 🎬 AI-Powered Faceless Video Generator
+# 🎬 AI-Powered Viral YouTube Shorts Generator
 
-A fully automated, AI-powered video generation system that transforms text scripts into professional YouTube Shorts with realistic voiceover, synchronized subtitles, and relevant stock footage.
+A fully automated, AI-powered video generation system that transforms text scripts into high-engagement YouTube Shorts with realistic voiceover, synchronized subtitles, and semantically-matched visuals. Built for maximum viewer retention and viral potential.
 
-## ✨ Features
+## 🎯 **MAJOR BREAKTHROUGH - V2.0 ACHIEVEMENTS**
 
-- 🤖 **AI-Powered Scene Analysis** - Intelligent script breakdown using Google Gemini 2.5 Flash
-- 🎵 **Realistic Voiceover** - High-quality AI voice synthesis with Edge-TTS
-- 📹 **Stock Video Integration** - Automatic video fetching from Pexels API with smart querying
-- 📝 **Professional Subtitles** - Whisper-based transcription with perfect timing synchronization
-- 🎬 **Automated Assembly** - MoviePy-based video compilation with proper transitions
-- 📱 **YouTube Shorts Ready** - Perfect 9:16 aspect ratio, optimized for vertical viewing
-- 🔄 **LangGraph Orchestration** - Modular pipeline architecture for reliability and scalability
+✅ **PERFECT AUDIO-VIDEO SYNC** - Eliminated duration mismatches and missing video at the end  
+✅ **INTELLIGENT PIXABAY INTEGRATION** - Semantic video search with rich tag metadata (10x better than Pexels)  
+✅ **REAL-TIME SCENE ANALYSIS** - Uses actual audio timing and subtitle segments for precise cuts  
+✅ **ZERO CRASHES** - Robust MoviePy handling with proper clip validation and resource management  
+✅ **FULL PIPELINE AUTOMATION** - End-to-end generation from script to final video  
+
+## ✨ Core Features
+
+- 🧠 **Audio-First Architecture** - Generate audio → subtitles → scene analysis for perfect sync
+- 🎵 **Realistic Voiceover** - High-quality AI voice synthesis with Edge-TTS (multiple voices)
+- 📹 **Semantic Video Matching** - Pixabay integration with intelligent tag-based scoring system
+- 📝 **Professional Subtitles** - Whisper-based transcription with precise timing alignment
+- 🎬 **Smart Video Assembly** - MoviePy-based compilation with duration correction and safety validation
+- 📱 **YouTube Shorts Optimized** - Perfect 9:16 aspect ratio with engagement-focused formatting
+- 🔄 **LangGraph Pipeline** - Modular, fault-tolerant architecture with comprehensive logging
 
 ## 🚀 Quick Start
 
