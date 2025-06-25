@@ -47,6 +47,9 @@ temp/*.png
 .DS_Store
 Thumbs.db
 
+# Debug and Output
+debug/
+
 # Logs
 *.log
 

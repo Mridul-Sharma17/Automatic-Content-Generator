@@ -19,6 +19,8 @@ from typing import TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, END
 import logging
 from datetime import datetime
+from pathlib import Path
+from moviepy.editor import AudioFileClip
 
 # Add the project directory to the path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -182,132 +184,102 @@ class AIVideoGenerator:
             state["errors"].append(error_msg)
             
         return state
-    
+
     async def _fetch_videos_wrapper(self, state: VideoGenerationState) -> VideoGenerationState:
-        """Wrapper for video fetching using new Pixabay semantic search"""
+        """Wrapper for video fetching using Pixabay API"""
         try:
-            state = self._update_progress(state, "Downloading videos from Pixabay...")
-            
-            logger.info("📥 Downloading videos using Pixabay semantic search...")
-            
+            state = self._update_progress(state, "Fetching relevant stock videos...")
+            logger.info("📥 Starting video download for each scene...")
+
             scenes = state.get("scenes", [])
-            search_queries = state.get("search_queries", [])
-            
-            if not scenes or not search_queries:
-                logger.error("Missing scenes or search queries for video fetching")
-                state["errors"].append("Missing scenes or search queries")
-                return state
-            
+            queries = state.get("search_queries", [])
             downloaded_videos = []
-            temp_dir = "temp/videos"
-            os.makedirs(temp_dir, exist_ok=True)
-            
-            for i, (scene, query_data) in enumerate(zip(scenes, search_queries)):
-                logger.info(f"\n--- Fetching video for Scene {i+1}/{len(scenes)} ---")
-                
-                # Extract keywords and prompt
-                keywords = []
-                primary_query = query_data.get('primary_query', '')
-                fallback_queries = query_data.get('fallback_queries', [])
-                
-                if primary_query:
-                    keywords.append(primary_query)
-                keywords.extend(fallback_queries[:2])  # Add top 2 fallback queries
-                
-                # Use scene description as prompt context
-                prompt = scene.get('description', primary_query)
-                
-                if not keywords:
-                    logger.warning(f"No keywords for scene {i+1}, skipping")
-                    downloaded_videos.append({"success": False, "error": "No keywords"})
+
+            # Ensure output directory exists
+            video_dir = Path("temp/videos")
+            video_dir.mkdir(parents=True, exist_ok=True)
+
+            for idx, scene in enumerate(scenes):
+                logger.info(f"🎞️  Processing scene {idx + 1}/{len(scenes)}")
+
+                # Prefer enriched query data if available
+                query_data = queries[idx] if idx < len(queries) else {}
+                keywords = query_data.get("keywords", scene.get("keywords", []))
+                prompt = query_data.get("primary_query", scene.get("text", ""))
+
+                # Search Pixabay (blocking -> run in thread)
+                videos = await asyncio.to_thread(search_pixabay_videos, keywords, prompt, 30)
+                if not videos:
+                    logger.warning("No videos found for current scene")
+                    downloaded_videos.append({"scene_id": idx + 1, "success": False, "error": "no_search_results"})
                     continue
-                
-                logger.info(f"Scene {i+1} keywords: {keywords}")
-                logger.info(f"Scene {i+1} prompt: {prompt}")
-                
-                try:
-                    # Search for videos
-                    videos = search_pixabay_videos(keywords, prompt, limit=30)
-                    
-                    if not videos:
-                        logger.warning(f"No videos found for scene {i+1}")
-                        downloaded_videos.append({"success": False, "error": "No videos found"})
-                        continue
-                    
-                    # Select best video
-                    best_videos = select_best_videos(videos, keywords, prompt, count=1)
-                    
-                    if not best_videos:
-                        logger.warning(f"No suitable videos selected for scene {i+1}")
-                        downloaded_videos.append({"success": False, "error": "No suitable videos"})
-                        continue
-                    
-                    selected_video = best_videos[0]
-                    video_id = selected_video.get('id')
-                    
-                    # Get download URL
-                    download_url = get_video_download_url(selected_video, preferred_quality='medium')
-                    
-                    if not download_url:
-                        logger.error(f"No download URL found for video {video_id}")
-                        downloaded_videos.append({"success": False, "error": "No download URL"})
-                        continue
-                    
-                    # Download video
-                    video_filename = os.path.join(temp_dir, f"scene_{i+1}_video_{video_id}.mp4")
-                    
-                    if download_video(download_url, video_filename):
-                        downloaded_videos.append({
-                            "success": True,
-                            "scene_id": i + 1,
-                            "video_id": video_id,
-                            "file_info": {"path": video_filename},
-                            "metadata": {
-                                "tags": selected_video.get('tags', ''),
-                                "duration": selected_video.get('duration', 0),
-                                "views": selected_video.get('views', 0),
-                                "downloads": selected_video.get('downloads', 0)
-                            }
-                        })
-                        logger.info(f"✓ Scene {i+1} video ready: {video_filename}")
-                    else:
-                        logger.error(f"Failed to download video for scene {i+1}")
-                        downloaded_videos.append({"success": False, "error": "Download failed"})
-                        
-                except Exception as scene_error:
-                    logger.error(f"Error processing scene {i+1}: {scene_error}")
-                    downloaded_videos.append({"success": False, "error": str(scene_error)})
-            
+
+                best_videos = select_best_videos(videos, keywords, prompt, 1)
+                if not best_videos:
+                    logger.warning("No suitable videos selected for current scene")
+                    downloaded_videos.append({"scene_id": idx + 1, "success": False, "error": "no_best_video"})
+                    continue
+
+                video_meta = best_videos[0]
+                url = get_video_download_url(video_meta, "medium")
+                if not url:
+                    logger.error("Download URL missing for selected video")
+                    downloaded_videos.append({"scene_id": idx + 1, "success": False, "error": "no_url"})
+                    continue
+
+                filename = video_dir / f"scene_{idx + 1}_video_{video_meta.get('id')}.mp4"
+                success = await asyncio.to_thread(download_video, url, str(filename))
+                downloaded_videos.append({
+                    "scene_id": idx + 1,
+                    "file_path": str(filename) if success else "",
+                    "success": bool(success),
+                    "video_id": video_meta.get("id")
+                })
+                logger.info("✅ Download %s: %s", "successful" if success else "failed", filename)
+
             state["downloaded_videos"] = downloaded_videos
-            
-            successful_downloads = [v for v in downloaded_videos if v.get("success", False)]
-            logger.info(f"✅ Video download complete! Downloaded {len(successful_downloads)}/{len(scenes)} videos")
-            
+            successful = len([v for v in downloaded_videos if v["success"]])
+            logger.info(f"✅ Video fetching complete! Downloaded {successful}/{len(scenes)} clips")
+
         except Exception as e:
             error_msg = f"Video fetching failed: {str(e)}"
             logger.error(error_msg)
             state["errors"].append(error_msg)
-            
+
         return state
-    
+
     async def _generate_voiceover_wrapper(self, state: VideoGenerationState) -> VideoGenerationState:
         """Wrapper for voiceover generation node"""
         try:
-            state = self._update_progress(state, "Generating AI voiceover...")
-            
-            logger.info("🎙️ Generating AI voiceover with Edge-TTS...")
-            audio_result = await self.voiceover_generator.generate_voiceover(state["script"])
-            
-            state["audio_file"] = audio_result["audio_file"]
-            state["audio_duration"] = audio_result["duration"]
-            
-            logger.info(f"✅ Voiceover generation complete! Duration: {audio_result['duration']:.2f}s")
-            
+            state = self._update_progress(state, "Generating AI voiceover…")
+            logger.info("🎙️ Generating AI voiceover with Coqui XTTS…")
+
+            # Decide output location
+            output_path = Path("temp/latest_generated_audio.wav")
+            output_path.parent.mkdir(exist_ok=True)
+
+            # Run blocking TTS in a background thread
+            await asyncio.to_thread(
+                self.voiceover_generator.generate_voiceover,
+                state["script"],
+                output_path,
+                voice="female_professional",
+                emotion="neutral",
+            )
+
+            # Determine audio duration
+            duration = AudioFileClip(str(output_path)).duration
+
+            # Update shared state
+            state["audio_file"] = str(output_path)
+            state["audio_duration"] = duration
+
+            logger.info(f"✅ Voiceover generation complete! Duration: {duration:.2f}s")
         except Exception as e:
             error_msg = f"Voiceover generation failed: {str(e)}"
             logger.error(error_msg)
             state["errors"].append(error_msg)
-            
+
         return state
     
     async def _generate_subtitles_wrapper(self, state: VideoGenerationState) -> VideoGenerationState:
@@ -352,7 +324,7 @@ class AIVideoGenerator:
                     
                     scene_videos.append({
                         "scene_id": i + 1,
-                        "file_path": video_result.get("file_info", {}).get("path", ""),
+                        "file_path": video_result.get("file_path") or video_result.get("file_info", {}).get("path", ""),
                         "duration": scene_duration,  # Use actual scene duration
                         "start_time": scene_start,
                         "end_time": scene_start + scene_duration

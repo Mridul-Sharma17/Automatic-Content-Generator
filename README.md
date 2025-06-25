@@ -39,6 +39,12 @@ A fully automated, AI-powered video generation system that transforms text scrip
 - 🎯 **Emotional Intelligence** - Visual storytelling that matches content mood and financial concepts
 - 🖥️ **Hardware Optimized** - Full system assessment and GPU acceleration ready
 
+## 🆕 2025-06-25 Update
+
+- ✅ Seamless voice-over integration with Coqui XTTS v2 – audio is now generated first and drives the entire pipeline.
+- ✅ Subtitle generation, scene analysis and prompt generation are perfectly synced to REAL audio timing.
+- ✅ Video assembly fixes: reliable clip path handling, duration matching, and final rendering stability.
+
 ## 🚀 Quick Start
 
 ### Prerequisites

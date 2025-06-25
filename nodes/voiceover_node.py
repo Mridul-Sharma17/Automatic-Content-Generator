@@ -1,103 +1,153 @@
 #!/usr/bin/env python3
 """
-Voiceover Node - AI voice generation using Edge-TTS
-Creates high-quality realistic voiceovers for videos
+Voiceover Node - AI voice generation using Coqui XTTS v2
+Creates high-quality, emotion-controlled voiceovers with GPU acceleration
 """
 
 import sys
 import os
 import asyncio
-import edge_tts
+import time
 from pathlib import Path
+import torch
+from TTS.api import TTS
 from moviepy.editor import AudioFileClip
+import logging
+import torch.serialization
+
+# Monkey-patch torch.load to disable weights_only
+original_torch_load = torch.load
+def patched_torch_load(*args, **kwargs):
+    kwargs['weights_only'] = False
+    return original_torch_load(*args, **kwargs)
+torch.load = patched_torch_load
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class VoiceoverNode:
-    """Generates high-quality AI voiceovers using Edge-TTS"""
+    """Generates high-quality AI voiceovers using Coqui XTTS v2"""
     
     def __init__(self):
-        """Initialize the Voiceover Node"""
-        print("🎙️ Initializing Voiceover Node...")
+        """Initialize the Voiceover Node with XTTS v2"""
+        print("🎙️ Initializing Voiceover Node with Coqui XTTS v2...")
         
         # Create temp directory for audio
         self.temp_dir = Path("temp")
         self.temp_dir.mkdir(exist_ok=True)
         
-        # Professional voice settings
-        self.voice_options = {
-            "male_professional": "en-US-DavisNeural",
-            "female_professional": "en-US-AriaNeural", 
-            "male_authoritative": "en-US-BrianNeural",
-            "female_friendly": "en-US-JennyNeural"
-        }
+        # Check for GPU availability
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"✅ Using device: {self.device.upper()}")
         
-        print("✅ Voiceover Node ready!")
+        # Initialize TTS
+        try:
+            self.tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(self.device)
+            # Retrieve list of bundled Coqui voices for validation/fallbacks
+            self.available_speakers = list(self.tts.synthesizer.tts_model.speaker_manager.name_to_id)
+            print(f"✅ Coqui XTTS v2 loaded with {len(self.available_speakers)} speakers")
+        except Exception as e:
+            logger.error(f"❌ Failed to load XTTS v2: {e}")
+            raise
+        
+        # Voice cloning settings
+        self.voice_samples_dir = Path("voice_samples")
+        self.voice_samples_dir.mkdir(exist_ok=True)
+        
+        # Emotion control parameters
+        self.emotion_options = {
+            "neutral": 0.0,
+            "happy": 0.7,
+            "sad": -0.7,
+            "angry": 0.9,
+            "fearful": -0.5,
+            "disgust": -0.3,
+            "surprised": 0.6
+        }
     
-    async def generate_voiceover(self, script: str, voice_type: str = "female_professional") -> dict:
+    def generate_voiceover(self, text: str, output_path: Path, 
+                         voice: str = "female_professional", 
+                         emotion: str = "neutral",
+                         cloned_voice: str = None) -> None:
         """
-        Generate high-quality voiceover from script
+        Generate voiceover with emotion control and optional voice cloning
         
         Args:
-            script: The text to convert to speech
-            voice_type: Type of voice to use
-            
-        Returns:
-            Dictionary with audio file path and metadata
+            text: Text to speak
+            output_path: Output audio file path
+            voice: Predefined voice profile (ignored if cloned_voice provided)
+            emotion: Emotion to convey (see self.emotion_options)
+            cloned_voice: Path to reference audio for voice cloning
         """
-        print("🎤 Generating AI voiceover with Edge-TTS...")
-        
         try:
-            # Select voice
-            voice = self.voice_options.get(voice_type, "en-US-AriaNeural")
+            # Set emotion parameters
+            emotion_value = self.emotion_options.get(emotion, 0.0)
             
-            # Create output filename
-            audio_filename = "latest_generated_audio.wav"
-            audio_path = self.temp_dir / audio_filename
+            # Generate voiceover
+            if cloned_voice and os.path.exists(cloned_voice):
+                # Use voice cloning
+                self.tts.tts_to_file(
+                    text=text,
+                    file_path=str(output_path),
+                    speaker_wav=str(cloned_voice),
+                    emotion=emotion_value,
+                    language="en"
+                )
+            else:
+                # Use predefined voice
+                self.tts.tts_to_file(
+                    text=text,
+                    file_path=str(output_path),
+                    speaker=self._get_voice_id(voice),
+                    emotion=emotion_value,
+                    language="en"
+                )
             
-            # Generate speech with optimal settings
-            communicate = edge_tts.Communicate(script, voice)
-            await communicate.save(str(audio_path))
-            
-            # Get audio duration
-            audio_clip = AudioFileClip(str(audio_path))
-            duration = audio_clip.duration
-            audio_clip.close()
-            
-            print(f"✅ Voiceover generated successfully!")
-            print(f"   🎵 Voice: {voice}")
-            print(f"   ⏱️  Duration: {duration:.2f} seconds")
-            print(f"   📁 File: {audio_path}")
-            
-            return {
-                "success": True,
-                "audio_file": str(audio_path),
-                "duration": duration,
-                "voice_used": voice,
-                "script_length": len(script)
-            }
-            
+            print(f"✅ Voiceover generated: {output_path}")
+            return str(output_path)
         except Exception as e:
-            print(f"❌ Voiceover generation failed: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "audio_file": None,
-                "duration": 0.0
-            }
+            logger.error(f"❌ Voiceover generation failed: {e}")
+            raise
+    
+    def _get_voice_id(self, voice_name: str) -> str:
+        """Resolve a generic voice profile to an actual XTTS speaker name.
 
-# Test function
-async def test_voiceover():
-    """Test the voiceover generation"""
-    print("🧪 Testing Voiceover Node...")
-    
-    test_script = "Did you know that 90% of millionaires invest in real estate? Here's why property investment is the secret to building lasting wealth."
-    
-    voiceover = VoiceoverNode()
-    result = await voiceover.generate_voiceover(test_script)
-    
-    if result["success"]:
-        print(f"✅ Test successful! Generated {result['duration']:.1f}s audio")
-    else:
-        print(f"❌ Test failed: {result['error']}")
+        Accepts either a generic profile (e.g. ``female_professional``) or a
+        concrete speaker name shipped with the model. If no match is found, the
+        method falls back to the first available speaker to ensure synthesis
+        never raises a ``KeyError``.
+        """
+        profile_to_speaker = {
+            "female_professional": "Ana Florence",
+            "male_professional": "Andrew Chipper",
+            "female_friendly": "Claribel Dervla",
+            "male_authoritative": "Damien Black",
+        }
 
+        # 1. Translated generic profile ➜ concrete speaker name
+        speaker = profile_to_speaker.get(voice_name)
+        if speaker and speaker in self.available_speakers:
+            return speaker
+
+        # 2. Caller may have passed the concrete Coqui speaker already
+        if voice_name in self.available_speakers:
+            return voice_name
+
+        # 3. Fallback – use the first bundled speaker and warn
+        logger.warning(
+            "Voice '%s' not recognised; defaulting to '%s'.",
+            voice_name,
+            self.available_speakers[0],
+        )
+        return self.available_speakers[0]
+
+# Example usage
 if __name__ == "__main__":
-    asyncio.run(test_voiceover())
+    node = VoiceoverNode()
+    node.generate_voiceover(
+        "Building wealth starts with consistent action and financial education.",
+        Path("temp/test_voiceover.wav"),
+        voice="female_professional",
+        emotion="happy"
+    )
