@@ -16,10 +16,15 @@ import asyncio
 import json
 from typing import List, Dict, Any
 import google.generativeai as genai
+from dotenv import load_dotenv
 
-# Add parent directory to path for config import
+# Load environment variables
+load_dotenv()
+
+# Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import GEMINI_API_KEY
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 class SceneAnalyzerNode:
     """AI-powered scene analysis using Google Gemini 2.5 Flash"""

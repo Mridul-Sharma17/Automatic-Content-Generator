@@ -20,10 +20,15 @@ import google.generativeai as genai
 from datetime import datetime
 import logging
 import hashlib
+from dotenv import load_dotenv
 
-# Add parent directory to path for config import
+# Load environment variables
+load_dotenv()
+
+# Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import GEMINI_API_KEY
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 # Configure detailed logging
 logger = logging.getLogger(__name__)

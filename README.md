@@ -81,7 +81,11 @@ source ai_video_env/bin/activate  # On Windows: ai_video_env\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. **Configure API keys** (see [Configuration](#configuration))
+4. **Configure API keys**:
+```bash
+cp .env.example .env
+# Then edit .env file with your API keys (see Configuration section)
+```
 
 5. **Test the music node** (optional):
 ```bash
@@ -114,12 +118,16 @@ python langgraph_pipeline.py
 
 ### Setup
 
-1. Open `config.py`
-2. Replace placeholder values with your actual API keys:
+1. **Copy environment file**:
+```bash
+cp .env.example .env
+```
 
-```python
-GEMINI_API_KEY = "your_gemini_api_key_here"
-PIXABAY_API_KEY = "your_pixabay_api_key_here"
+2. **Edit `.env` file** and replace placeholder values with your actual API keys:
+
+```bash
+GEMINI_API_KEY=your_gemini_api_key_here
+PIXABAY_API_KEY=your_pixabay_api_key_here
 ```
 
 ## 📝 Usage
@@ -184,7 +192,8 @@ python nodes/voiceover_node.py
 ```
 ai-video-generator/
 ├── langgraph_pipeline.py      # Main orchestration pipeline
-├── config.py                  # API keys configuration  
+├── .env                       # Environment variables (API keys) - create from .env.example
+├── .env.example              # Template for environment variables
 ├── input.txt                  # Optional script input (auto-generated available)
 ├── requirements.txt           # Python dependencies
 ├── README.md                  # This documentation
@@ -526,7 +535,8 @@ The system uses a **LangGraph-based pipeline** with modular nodes:
 ```
 ai-video-generator/
 ├── langgraph_pipeline.py      # Main orchestration pipeline (with viral script integration)
-├── config.py                  # API keys configuration
+├── .env                       # Environment variables (API keys) - create from .env.example
+├── .env.example              # Template for environment variables
 ├── input.txt                  # Script input file (optional - auto-generated now)
 ├── requirements.txt           # Python dependencies
 ├── HARDWARE_ASSESSMENT.md     # Complete system hardware analysis

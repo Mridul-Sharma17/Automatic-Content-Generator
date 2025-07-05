@@ -33,7 +33,13 @@ from nodes.voiceover_node import VoiceoverNode
 from nodes.professional_subtitle_node import ProfessionalSubtitleNode
 from nodes.video_assembly_node import VideoAssemblyNode
 from nodes.viral_script_generator_node import ViralScriptGeneratorNode
-from config import PEXELS_API_KEY
+
+# Load environment variables
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
 
 # Configure extensive logging
 logging.basicConfig(

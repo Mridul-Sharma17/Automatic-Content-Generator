@@ -132,7 +132,9 @@ def search_pixabay_videos(keywords: List[str], prompt: str, limit: int = 20) -> 
         List of video objects with metadata
     """
     try:
-        from config import PIXABAY_API_KEY
+        from dotenv import load_dotenv
+        load_dotenv()
+        PIXABAY_API_KEY = os.getenv('PIXABAY_API_KEY')
         
         if not PIXABAY_API_KEY or PIXABAY_API_KEY == "your_pixabay_api_key_here":
             logger.error("Pixabay API key not configured")

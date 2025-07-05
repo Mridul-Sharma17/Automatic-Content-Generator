@@ -47,6 +47,9 @@ temp/*.png
 .DS_Store
 Thumbs.db
 
+# Environment Variables
+.env
+
 # Debug and Output
 debug/
 
