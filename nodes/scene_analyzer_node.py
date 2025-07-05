@@ -2,6 +2,12 @@
 """
 Scene Analyzer Node - AI-powered script analysis for video generation
 Uses Google Gemini to intelligently break scripts into timed scenes
+
+TODO: Enhanced AI Analysis Features
+- Implement GPT-4 Vision for visual content analysis
+- Add sentiment analysis for better mood detection
+- Integrate real-time trend analysis for viral optimization
+- Add multi-language scene analysis support
 """
 
 import sys

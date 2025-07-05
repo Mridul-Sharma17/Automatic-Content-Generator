@@ -2,6 +2,11 @@
 """
 Voiceover Node - AI voice generation using Coqui XTTS v2
 Creates high-quality, emotion-controlled voiceovers with GPU acceleration
+
+TODO: Upgrade to RAV (Real-time Audio Variational) or similar advanced voice cloning model
+- RAV offers state-of-the-art voice cloning with minimal training data
+- Better voice quality and more natural prosody than XTTS v2
+- Research and implement once XTTS v2 is fully stable in production
 """
 
 import sys
@@ -54,6 +59,12 @@ class VoiceoverNode:
         # Voice cloning settings
         self.voice_samples_dir = Path("voice_samples")
         self.voice_samples_dir.mkdir(exist_ok=True)
+        
+        # TODO: Implement advanced voice cloning with RAV model
+        # - Research and integrate RAV (Real-time Audio Variational) model
+        # - RAV provides superior voice cloning quality with minimal training data
+        # - Better emotion control and more natural speech synthesis
+        # - Plan implementation after XTTS v2 is stable in production
         
         # Emotion control parameters
         self.emotion_options = {

@@ -101,6 +101,14 @@ class AIVideoGenerator:
         self.video_assembler = VideoAssemblyNode()
         self.viral_script_generator = ViralScriptGeneratorNode()
         
+        # TODO: Integrate MusicNode for background music
+        # - Add background music fetching from Openverse API
+        # - Integrate music selection based on video mood and content theme
+        # - Add music mixing and volume balancing in video assembly
+        # - Allow user customization of music preferences
+        # from nodes.music_node import MusicNode
+        # self.music_fetcher = MusicNode()
+        
         # Build the LangGraph workflow
         self.workflow = self._build_workflow()
         

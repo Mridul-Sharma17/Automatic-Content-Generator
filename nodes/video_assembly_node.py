@@ -1,6 +1,13 @@
 """
 Video Assembly Node - Final Video Compilation for YouTube Shorts
 Combines scene videos, audio, and subtitles into a polished final video
+
+TODO: Integrate background music support
+- Add background music track mixing with main voiceover audio
+- Implement dynamic volume balancing (lower music when voice is speaking)  
+- Add music fade in/out effects for professional transitions
+- Support custom music selection based on video mood and content theme
+- Integrate with MusicNode for automatic music fetching from Openverse
 """
 
 import asyncio
