@@ -1,6 +1,6 @@
 # 🎬 AI-Powered Viral YouTube Shorts Generator
 
-> **Status: Active Development** | **Resume-Ready Project** | **Interview Demo Available**
+> **Status: Active Development**
 
 A fully automated, AI-powered video generation system that transforms text concepts into high-engagement YouTube Shorts with realistic voiceover, synchronized subtitles, semantically-matched visuals, and background music. Built for maximum viewer retention and viral potential.
 
