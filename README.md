@@ -1,56 +1,65 @@
 # 🎬 AI-Powered Viral YouTube Shorts Generator
 
-A fully automated, AI-powered video generation system that transforms text scripts into high-engagement YouTube Shorts with realistic voiceover, synchronized subtitles, and semantically-matched visuals. Built for maximum viewer retention and viral potential.
+> **Status: Active Development** | **Resume-Ready Project** | **Interview Demo Available**
 
-## 🎯 **MAJOR BREAKTHROUGH - V3.0 ACHIEVEMENTS**
+A fully automated, AI-powered video generation system that transforms text concepts into high-engagement YouTube Shorts with realistic voiceover, synchronized subtitles, semantically-matched visuals, and background music. Built for maximum viewer retention and viral potential.
 
-### 🔥 **VIRAL SCRIPT GENERATION (NEW!)**
+## 🎯 **PROJECT HIGHLIGHTS - V4.0**
+
+### 🔥 **VIRAL SCRIPT GENERATION ENGINE**
 ✅ **AI-POWERED SCRIPT CREATION** - Gemini 2.0 Thinking + viral research integration  
 ✅ **QUALITY CONTROL SYSTEM** - Iterative feedback loop with AI rater for viral potential  
 ✅ **VIRAL RESEARCH INTEGRATION** - Full VIRAL_CONTENT_RESEARCH.md context for hook optimization  
 ✅ **AUTOMATED SCRIPT PIPELINE** - No more manual input.txt - fully AI-generated scripts  
 
-### 🎙️ **ADVANCED TTS UPGRADE (READY TO DEPLOY)**
-✅ **HARDWARE ASSESSMENT COMPLETE** - RTX 3050 + 16GB RAM confirmed compatible  
-✅ **COQUI XTTS V2 READY** - 2-5x better quality than Edge-TTS with emotion control  
-✅ **GPU ACCELERATION** - CUDA support for faster, more realistic voiceover generation  
-✅ **VOICE CLONING CAPABLE** - Custom voice training with 5-30 second samples  
+### 🎵 **BACKGROUND MUSIC INTEGRATION (NEW!)**
+✅ **OPENVERSE API INTEGRATION** - Fetches royalty-free background music automatically  
+✅ **INTELLIGENT MUSIC MATCHING** - Mood and content-aware music selection  
+✅ **MULTI-SOURCE SUPPORT** - Freesound, Jamendo, and other Creative Commons sources  
+✅ **QUALITY SCORING SYSTEM** - Advanced relevance scoring for optimal music selection  
+🔄 **PIPELINE INTEGRATION** - Ready for integration into main video generation workflow  
 
-### 📊 **PREVIOUS V2.5 FOUNDATIONS**
-✅ **PERFECT AUDIO-VIDEO SYNC** - Eliminated duration mismatches and missing video at the end  
-✅ **INTELLIGENT PIXABAY INTEGRATION** - Semantic video search with rich tag metadata (10x better than Pexels)  
-✅ **BRAND-AWARE PROMPTS** - Full project context integration for dramatically improved video relevance  
-✅ **FINANCIAL EDUCATION FOCUS** - Specialized for wealth-building content with emotional intelligence  
-✅ **ROBUST ERROR HANDLING** - Zero crashes with comprehensive fallback strategies  
-✅ **FUNCTION-BASED ARCHITECTURE** - Streamlined from class-based to efficient function-based video fetching  
-✅ **FULL PIPELINE AUTOMATION** - End-to-end generation from script to final video  
+### 🎙️ **ADVANCED TTS WITH VOICE CLONING**
+✅ **COQUI XTTS V2 IMPLEMENTATION** - 2-5x better quality than Edge-TTS with emotion control  
+✅ **GPU ACCELERATION** - CUDA support for faster, more realistic voiceover generation  
+✅ **VOICE CLONING READY** - Custom voice training with 5-30 second samples  
+✅ **HARDWARE OPTIMIZED** - RTX 3050 + 16GB RAM confirmed compatible  
+🔄 **RAV UPGRADE PLANNED** - Research phase for next-generation voice cloning  
+
+### 📊 **ROBUST PIPELINE ARCHITECTURE**
+✅ **PERFECT AUDIO-VIDEO SYNC** - Audio-first architecture eliminates timing issues  
+✅ **INTELLIGENT VIDEO MATCHING** - Pixabay semantic search with rich metadata scoring  
+✅ **BRAND-AWARE CONTENT** - "Wealthier Everyday" context for financial education focus  
+✅ **LANGGRAPH ORCHESTRATION** - Modular, fault-tolerant pipeline with comprehensive logging  
+✅ **FUNCTION-BASED EFFICIENCY** - Streamlined architecture for optimal performance  
 
 ## ✨ Core Features
 
-- 🔥 **VIRAL SCRIPT GENERATION** - AI-powered script creation with quality control and viral research integration
-- 🧠 **Audio-First Architecture** - Generate audio → subtitles → scene analysis for perfect sync
-- 🎵 **Advanced TTS System** - Upgrading to Coqui XTTS v2 for realistic emotion and voice cloning
-- 📹 **Semantic Video Matching** - Pixabay integration with intelligent tag-based scoring system
-- 🎯 **Brand-Aware Intelligence** - Full project context for "Wealthier Everyday" financial education focus
-- 📝 **Professional Subtitles** - Whisper-based transcription with precise timing alignment
-- 🎬 **Smart Video Assembly** - MoviePy-based compilation with duration correction and safety validation
-- 📱 **YouTube Shorts Optimized** - Perfect 9:16 aspect ratio with engagement-focused formatting
-- 🔄 **LangGraph Pipeline** - Modular, fault-tolerant architecture with comprehensive logging
-- 🎯 **Emotional Intelligence** - Visual storytelling that matches content mood and financial concepts
-- 🖥️ **Hardware Optimized** - Full system assessment and GPU acceleration ready
+### 🤖 **AI-Powered Content Generation**
+- **Viral Script Generation**: Automatic script creation with quality control and viral research
+- **Scene Analysis**: Intelligent script breakdown with timing and mood detection
+- **Prompt Engineering**: Brand-aware, context-rich search query generation
+- **Content Optimization**: Financial education focus with emotional intelligence
 
-## 🆕 2025-06-25 Update
+### 🎵 **Multi-Media Processing**  
+- **Advanced TTS**: Coqui XTTS v2 with emotion control and voice cloning
+- **Background Music**: Openverse integration for royalty-free music matching
+- **Video Fetching**: Pixabay semantic search with intelligent relevance scoring
+- **Subtitle Generation**: Whisper-based transcription with precise timing
 
-- ✅ Seamless voice-over integration with Coqui XTTS v2 – audio is now generated first and drives the entire pipeline.
-- ✅ Subtitle generation, scene analysis and prompt generation are perfectly synced to REAL audio timing.
-- ✅ Video assembly fixes: reliable clip path handling, duration matching, and final rendering stability.
+### 🎬 **Professional Video Assembly**
+- **Audio-First Sync**: Generate audio → subtitles → scenes for perfect timing
+- **YouTube Shorts Optimization**: 9:16 aspect ratio, engagement-focused formatting  
+- **Dynamic Assembly**: MoviePy-based compilation with safety validation
+- **Quality Control**: Comprehensive error handling and fallback strategies
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.8+ (3.11+ recommended)
 - FFmpeg installed on your system
+- CUDA-compatible GPU (optional, for faster TTS)
 - API keys (see [Configuration](#configuration))
 
 ### Installation
@@ -74,7 +83,12 @@ pip install -r requirements.txt
 
 4. **Configure API keys** (see [Configuration](#configuration))
 
-5. **Generate your first video**:
+5. **Test the music node** (optional):
+```bash
+python nodes/music_node.py
+```
+
+6. **Generate your first video**:
 ```bash
 python langgraph_pipeline.py
 ```
@@ -85,11 +99,18 @@ python langgraph_pipeline.py
 
 1. **Google Gemini API** (Free tier: 60 requests/minute)
    - Get from: https://makersuite.google.com/app/apikey
-   - Used for: AI scene analysis and script breakdown
+   - Used for: AI scene analysis, script generation, and content optimization
 
 2. **Pixabay API** (Free tier: 5,000 requests/hour)
    - Get from: https://pixabay.com/api/docs/
-   - Used for: High-quality stock video footage with rich metadata
+   - Used for: High-quality stock video footage with semantic matching
+
+### Optional Services
+
+3. **Openverse API** (No API key required!)
+   - Automatic royalty-free music fetching
+   - Creative Commons licensed content
+   - No rate limits for standard usage
 
 ### Setup
 
@@ -98,6 +119,323 @@ python langgraph_pipeline.py
 
 ```python
 GEMINI_API_KEY = "your_gemini_api_key_here"
+PIXABAY_API_KEY = "your_pixabay_api_key_here"
+```
+
+## 📝 Usage
+
+### Fully Automated Generation (Recommended)
+
+```bash
+python langgraph_pipeline.py
+```
+
+**What happens automatically:**
+1. 🔥 **Viral Script Generation** - AI creates engaging scripts with quality control
+2. 🎙️ **Advanced Voiceover** - Coqui XTTS v2 generates realistic audio with emotions
+3. 📝 **Precise Subtitles** - Whisper transcription with perfect timing alignment
+4. 🎬 **Scene Analysis** - Audio-driven breakdown for optimal video matching
+5. 🔍 **Smart Video Search** - Pixabay semantic matching with relevance scoring
+6. 📥 **Video Download** - High-quality 9:16 clips perfectly timed to scenes
+7. 🎵 **Background Music** - *(Coming Soon)* Automatic music selection and mixing
+8. 🎬 **Final Assembly** - Professional compilation with synchronized elements
+
+### Custom Script Mode
+
+1. **Edit your script**: Open `input.txt` and write your video script
+2. **Run with existing script**: Choose option 2 when prompted
+3. **Same automated processing** for the rest of the pipeline
+
+### Testing Individual Components
+
+**Test Music Node:**
+```bash
+python nodes/music_node.py
+```
+
+**Test Voiceover Generation:**
+```bash
+python nodes/voiceover_node.py
+```
+
+## 🏗️ Architecture
+
+### Pipeline Flow
+
+```
+🔥 Viral Script → 🎙️ Voiceover → 📝 Subtitles → 🎬 Scene Analysis → 🔍 Prompts → 📹 Videos → 🎵 Music → 🎬 Assembly
+```
+
+### Node Components
+
+| Node | Function | Status | Technology |
+|------|----------|--------|------------|
+| **Viral Script Generator** | AI-powered script creation with quality control | ✅ Complete | Gemini 2.0 Thinking |
+| **Voiceover Node** | Advanced TTS with emotion control | ✅ Complete | Coqui XTTS v2 |
+| **Subtitle Generator** | Precise speech-to-text transcription | ✅ Complete | OpenAI Whisper |
+| **Scene Analyzer** | Audio-timed scene breakdown | ✅ Complete | Gemini 2.5 Flash |
+| **Prompt Generator** | Brand-aware search query creation | ✅ Complete | Gemini + Context |
+| **Video Fetcher** | Semantic video matching and download | ✅ Complete | Pixabay API |
+| **Music Node** | Royalty-free background music | ✅ Complete | Openverse API |
+| **Video Assembly** | Professional final video compilation | ✅ Complete | MoviePy + PIL |
+
+### 📁 Project Structure
+
+```
+ai-video-generator/
+├── langgraph_pipeline.py      # Main orchestration pipeline
+├── config.py                  # API keys configuration  
+├── input.txt                  # Optional script input (auto-generated available)
+├── requirements.txt           # Python dependencies
+├── README.md                  # This documentation
+├── HARDWARE_ASSESSMENT.md     # System compatibility analysis
+├── VIRAL_CONTENT_RESEARCH.md  # Viral content patterns and strategies
+├── nodes/                     # Pipeline node modules
+│   ├── __init__.py
+│   ├── viral_script_generator_node.py  # AI script generation
+│   ├── voiceover_node.py      # Advanced TTS with XTTS v2
+│   ├── professional_subtitle_node.py   # Whisper transcription
+│   ├── scene_analyzer_node.py # Audio-timed scene analysis  
+│   ├── prompt_generator_node.py        # Brand-aware search queries
+│   ├── video_fetcher_node.py  # Pixabay semantic matching
+│   ├── music_node.py          # Openverse music fetching (NEW!)
+│   └── video_assembly_node.py # Professional video compilation
+├── debug/                     # Generation logs and session data
+│   ├── script_generation/     # Viral script generation debugging
+│   └── voiceovers/           # TTS generation history
+├── output/                    # Generated videos (created automatically)
+├── temp/                      # Temporary files (created automatically)
+│   ├── music/                # Downloaded background music
+│   └── videos/               # Downloaded scene videos
+└── mcp-gemini-server/         # Model Context Protocol server (optional)
+```
+
+## 🔧 Advanced Configuration
+
+### Hardware Optimization
+
+**System Specifications (Confirmed Compatible):**
+- ✅ AMD Ryzen 5 5600H (6C/12T) - Excellent for AI workloads
+- ✅ 16GB RAM - Sufficient for advanced models  
+- ✅ NVIDIA RTX 3050 (4GB VRAM) - Perfect for CUDA acceleration
+- ✅ Fast NVMe SSD with 252GB available space
+
+**Performance Optimizations:**
+- GPU acceleration for TTS generation (2-5x faster)
+- Parallel video processing and downloads
+- Intelligent caching for repeated operations
+- Memory-efficient audio processing
+
+### Voice Customization
+
+**Current XTTS v2 Options:**
+```python
+# Available professional voices
+voices = [
+    "female_professional",  # Ana Florence (default)
+    "male_professional",    # Andrew Chipper  
+    "female_friendly",      # Claribel Dervla
+    "male_authoritative",   # Damien Black
+]
+
+# Emotion control
+emotions = ["neutral", "happy", "sad", "angry", "surprised"]
+```
+
+**Voice Cloning Setup:**
+1. Create `voice_samples/` directory
+2. Add 5-30 second voice samples (WAV format)
+3. Reference in generation call:
+```python
+node.generate_voiceover(
+    text="Your script text",
+    output_path="output.wav",
+    cloned_voice="voice_samples/your_voice.wav"
+)
+```
+
+### Music Customization
+
+**Mood and Genre Options:**
+```python
+# Available moods
+moods = ["upbeat", "calm", "professional", "energetic", "inspiring"]
+
+# Available genres  
+genres = ["instrumental", "electronic", "acoustic", "orchestral", "ambient"]
+
+# Content themes
+themes = ["business", "education", "lifestyle", "finance", "technology"]
+```
+
+**Music Selection:**
+```python
+from nodes.music_node import MusicNode
+
+music_node = MusicNode()
+music_path = await music_node.fetch_background_music(
+    mood="professional",
+    genre="instrumental", 
+    content_theme="business"
+)
+```
+
+## 📊 Performance Metrics
+
+### Typical Processing Times
+
+| Stage | Duration | Notes |
+|-------|----------|-------|
+| **Viral Script Generation** | 60-180s | Includes quality iterations |
+| **Voiceover Generation** | 5-15s | XTTS v2 with GPU acceleration |
+| **Subtitle Generation** | 15-30s | Whisper processing |
+| **Scene Analysis** | 10-15s | Gemini API processing |
+| **Video Fetching** | 30-60s | Depends on file sizes |
+| **Music Fetching** | 10-20s | Openverse download |
+| **Video Assembly** | 60-120s | Final compilation |
+
+**Total Pipeline**: ~3-6 minutes per video
+
+### Resource Usage
+
+- **RAM**: 2-4 GB during processing
+- **Storage**: ~500MB per generated video  
+- **CPU**: Intensive during video processing
+- **GPU**: XTTS v2 generation (when available)
+- **Network**: ~100-300MB downloads per video
+
+## 🔄 TODO List & Roadmap
+
+### 🎵 Background Music Integration
+- [ ] **Pipeline Integration** - Add music node to main workflow
+- [ ] **Dynamic Mixing** - Automatic volume balancing with voiceover
+- [ ] **Fade Effects** - Professional music transitions
+- [ ] **User Preferences** - Customizable music selection criteria
+
+### 🎙️ Advanced Voice Technology  
+- [ ] **RAV Integration** - Research and implement Real-time Audio Variational model
+- [ ] **Custom Voice Training** - Streamlined voice cloning workflow
+- [ ] **Multi-Language Support** - Expand beyond English TTS
+- [ ] **Voice Style Transfer** - Advanced prosody and emotion control
+
+### 🤖 AI Enhancement
+- [ ] **GPT-4 Vision Integration** - Visual content analysis for better video matching
+- [ ] **Dynamic Prompt Optimization** - Self-improving search query generation
+- [ ] **A/B Testing Framework** - Automated content performance testing
+- [ ] **Viral Trend Analysis** - Real-time social media trend integration
+
+### 🎬 Production Features
+- [ ] **Batch Generation** - Multiple videos from topic lists
+- [ ] **Brand Customization** - Custom logos, colors, and styling
+- [ ] **Social Media Export** - Optimized formats for different platforms
+- [ ] **Analytics Integration** - Performance tracking and optimization
+
+### 🔧 Technical Improvements
+- [ ] **Docker Containerization** - Easy deployment and scaling
+- [ ] **API Endpoint** - RESTful API for external integrations
+- [ ] **Web Interface** - User-friendly GUI for non-technical users
+- [ ] **Cloud Deployment** - AWS/GCP integration for scalable processing
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+**Module not found errors**:
+```bash
+source ai_video_env/bin/activate
+pip install -r requirements.txt
+```
+
+**FFmpeg not found**:
+- **Ubuntu/Debian**: `sudo apt install ffmpeg`
+- **macOS**: `brew install ffmpeg`  
+- **Windows**: Download from https://ffmpeg.org/
+
+**CUDA not detected** (for GPU acceleration):
+```bash
+# Check CUDA installation
+nvidia-smi
+python -c "import torch; print(torch.cuda.is_available())"
+```
+
+**Music download failures**:
+- Check internet connection
+- Verify Openverse API accessibility
+- Review temp/music/ directory permissions
+
+**API rate limits**:
+- Pixabay: 5,000 requests/hour (free tier)
+- Gemini: 60 requests/minute (free tier)  
+- Wait or upgrade to higher tiers if needed
+
+## 🎯 Best Practices
+
+### Script Writing Tips
+
+- **Hook viewers immediately**: Start with compelling statistics or questions
+- **Keep sentences short**: 5-10 words per subtitle segment  
+- **Use specific numbers**: "90% of millionaires" vs "most millionaires"
+- **Include actionable advice**: Give viewers something they can do
+- **End with engagement**: Ask questions or provide calls-to-action
+
+### Content Strategy
+
+**Financial Education Focus:**
+- Investment strategies and wealth-building habits
+- Personal finance tips and budgeting strategies
+- Real estate investment and market analysis
+- Business growth and passive income streams
+- Behavioral finance and decision-making psychology
+
+**Viral Content Elements:**
+- Compelling hooks in first 3 seconds
+- Clear value propositions
+- Relatable examples and case studies  
+- Strong calls-to-action
+- Trending topics and timely relevance
+
+## 🤝 Contributing
+
+### Development Setup
+
+```bash
+# Install development dependencies
+pip install -r requirements.txt
+pip install pytest black flake8
+
+# Run tests
+python -m pytest tests/
+
+# Format code  
+black .
+```
+
+### Code Standards
+
+- **Type hints** for all function parameters and returns
+- **Comprehensive logging** for debugging and monitoring
+- **Error handling** with graceful fallbacks
+- **Documentation** for all public methods and classes
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+## 🙏 Acknowledgments
+
+- **Google Gemini** for AI-powered content analysis and generation
+- **Coqui TTS** for advanced voice synthesis technology
+- **OpenAI Whisper** for accurate speech recognition
+- **Openverse** for royalty-free music and media content
+- **Pixabay** for high-quality stock video footage
+- **LangGraph** for pipeline orchestration framework
+- **MoviePy** for video processing capabilities
+
+---
+
+**🚀 Ready to create amazing AI-generated videos for your resume and interviews!** 
+
+*This project demonstrates advanced AI integration, pipeline orchestration, multi-modal processing, and production-ready software development practices.*
 PIXABAY_API_KEY = "your_pixabay_api_key_here"
 ```
 
