@@ -10,7 +10,7 @@ langchain-community>=0.3.0
 google-generativeai>=0.7.0
 openai-whisper>=20231117
 transformers>=4.35.0
-torch==2.1.1
+torch>=2.2.0
 accelerate>=0.24.0
 numpy==1.26.4
 scipy>=1.10.0
