@@ -35,7 +35,7 @@ class SceneAnalyzerNode:
         
         try:
             genai.configure(api_key=GEMINI_API_KEY)
-            self.model = genai.GenerativeModel('gemini-2.5-pro')
+            self.model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-1219')
             print("✅ Google Gemini AI initialized successfully!")
         except Exception as e:
             print(f"❌ Failed to initialize Gemini AI: {e}")

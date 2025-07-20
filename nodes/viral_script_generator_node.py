@@ -43,8 +43,8 @@ class ViralScriptGeneratorNode:
         
         try:
             genai.configure(api_key=GEMINI_API_KEY)
-            self.generator_model = genai.GenerativeModel('gemini-2.5-pro')
-            self.rater_model = genai.GenerativeModel('gemini-2.5-pro')
+            self.generator_model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-1219')
+            self.rater_model = genai.GenerativeModel('gemini-2.0-flash-thinking-exp-1219')
             print("✅ Gemini 2.0 Thinking models initialized successfully!")
         except Exception as e:
             print(f"❌ Failed to initialize Gemini AI: {e}")
